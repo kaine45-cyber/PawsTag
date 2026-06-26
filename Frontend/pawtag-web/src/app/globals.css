@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand Colors ── */
+  --color-primary: #4A8FE8;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #EDF7F2;
+  --color-secondary-foreground: #2A6B47;
+  --color-accent: #FF7B35;
+  --color-accent-foreground: #FFFFFF;
+
+  /* ── Background / Neutral ── */
+  --color-background: #F7F9FC;
+  --color-foreground: #1A2332;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1A2332;
+  --color-muted: #EEF2F7;
+  --color-muted-foreground: #6B7A8D;
+  --color-input-bg: #F0F4FA;
+  --color-border: rgba(74,143,232,0.15);
+
+  /* ── Semantic ── */
+  --color-destructive: #EF4444;
+  --color-emergency: #FF4B4B;
+  --color-safe: #22C55E;
+  --color-zalo: #0068FF;
+
+  /* ── Chart ── */
+  --color-chart-1: #4A8FE8;
+  --color-chart-2: #52C97F;
+  --color-chart-3: #FF7B35;
+  --color-chart-4: #F59E0B;
+  --color-chart-5: #8B5CF6;
+
+  /* ── Fonts ── */
+  --font-display: "Nunito", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  /* ── Border Radius ── */
+  --radius-sm: 12px;
+  --radius-md: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #F7F9FC;
+  color: #1A2332;
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbar on mobile app shell */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Decorative map grid (Lost Pet Mode) */
+.map-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ── Gradient Utilities ── */
+.gradient-brand       { background: linear-gradient(135deg, #4A8FE8, #52C97F); }
+.gradient-emergency   { background: linear-gradient(135deg, #FF4B4B, #FF7B35); }
+.gradient-call        { background: linear-gradient(135deg, #22C55E, #16A34A); }
+.gradient-zalo        { background: linear-gradient(135deg, #0068FF, #0095FF); }
+.gradient-location    { background: linear-gradient(135deg, #FF7B35, #FF9A5C); }
+.gradient-passport    { background: linear-gradient(135deg, #1A3A6B, #1D5D3F); }
+.gradient-premium     { background: linear-gradient(135deg, #FF7B35, #FFAB7A); }
+.gradient-app-bg      { background: linear-gradient(135deg, #C8DCFF 0%, #C8EDD8 45%, #FFD8BC 100%); }
+
+/* ── Shadow Utilities ── */
+.shadow-card      { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.shadow-card-md   { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.shadow-form      { box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+.shadow-cta       { box-shadow: 0 8px 24px rgba(74,143,232,0.35); }
+.shadow-call      { box-shadow: 0 8px 20px rgba(34,197,94,0.35); }
+.shadow-zalo      { box-shadow: 0 8px 20px rgba(0,104,255,0.35); }
+.shadow-loc       { box-shadow: 0 8px 20px rgba(255,123,53,0.35); }
+.shadow-emergency { box-shadow: 0 8px 24px rgba(255,75,75,0.35); }
+.shadow-passport  { box-shadow: 0 6px 20px rgba(26,58,107,0.3); }
+.shadow-device    { box-shadow: 0 40px 80px rgba(0,0,0,0.4); }
+
+/* ── Font Utilities ── */
+@utility font-display {
+  font-family: var(--font-nunito), sans-serif;
+}
+@utility font-body {
+  font-family: var(--font-inter), sans-serif;
+}
+
+/* ── Animations ── */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }

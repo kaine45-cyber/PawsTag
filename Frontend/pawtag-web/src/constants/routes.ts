@@ -1,0 +1,17 @@
+export const ROUTES = {
+  home:          "/",
+  login:         "/login",
+  register:      "/register",
+  dashboard:     "/dashboard",
+  petList:       "/pet",
+  petCreate:     "/pet/create",
+  petDetail:     (id: string) => `/pet/${id}`,
+  petEdit:       (id: string) => `/pet/${id}/edit`,
+  petTags:       (id: string) => `/pet/${id}/tags`,
+  petLostMode:   (id: string) => `/pet/${id}/lost-mode`,
+  scanHistory:   "/scan/history",
+  notifications: "/notifications",
+  passport:      "/passport",
+  profile:       "/profile",
+  tagScan:       (code: string) => `/t/${code}`,
+} as const;

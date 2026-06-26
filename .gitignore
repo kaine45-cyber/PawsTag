@@ -1,0 +1,46 @@
+# ===== Backend (Java / Maven) =====
+Backend/target/
+**/target/
+*.class
+*.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+*.log
+Backend/boot.out.log
+Backend/boot.err.log
+
+# Uploaded files
+Backend/uploads/
+
+# ===== Frontend (Next.js / Node) =====
+node_modules/
+.next/
+out/
+build/
+coverage/
+.pnp
+.pnp.*
+next-env.d.ts
+*.tsbuildinfo
+
+# ===== Environment / secrets =====
+.env
+.env.*
+!.env.example
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs / debug =====
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.pem

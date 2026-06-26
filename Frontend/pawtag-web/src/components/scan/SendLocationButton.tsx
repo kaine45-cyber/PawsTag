@@ -1,0 +1,80 @@
+"use client";
+import { useState } from "react";
+import { MapPin, Check, Loader2 } from "lucide-react";
+
+type LocationState = "idle" | "loading" | "shared" | "denied";
+
+export function SendLocationButton() {
+  const [locState, setLocState] = useState<LocationState>("idle");
+  const [coords,   setCoords]   = useState<{ lat: number; lng: number } | null>(null);
+
+  function handleSendLocation() {
+    if (!navigator.geolocation) { setLocState("denied"); return; }
+    setLocState("loading");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocState("shared");
+      },
+      () => setLocState("denied"),
+      { timeout: 8000 },
+    );
+  }
+
+  if (locState === "shared") {
+    return (
+      <div className="w-full flex items-center px-4 h-[72px] rounded-2xl bg-[#EDF7F2] border-2 border-[#22C55E] shadow-card">
+        <div className="w-12 h-12 rounded-xl bg-[#22C55E]/20 flex items-center justify-center mr-4 shrink-0">
+          <Check size={24} className="text-[#22C55E]" />
+        </div>
+        <div className="flex-1">
+          <p className="text-[#22C55E] font-black text-[15px] font-display">Location Sent!</p>
+          <p className="text-[#6B7A8D] text-[12px] font-body">
+            {coords ? `${coords.lat.toFixed(4)}° N, ${coords.lng.toFixed(4)}° E` : "GPS shared with owner"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (locState === "denied") {
+    return (
+      <div className="w-full flex items-center px-4 h-[72px] rounded-2xl bg-[#FEF2F2] border-2 border-[#EF4444] shadow-card">
+        <div className="w-12 h-12 rounded-xl bg-[#EF4444]/20 flex items-center justify-center mr-4 shrink-0">
+          <MapPin size={24} className="text-[#EF4444]" />
+        </div>
+        <div className="flex-1">
+          <p className="text-[#EF4444] font-bold text-[14px] font-display">Location unavailable</p>
+          <p className="text-[#6B7A8D] text-[12px] font-body">Please allow location access</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleSendLocation}
+      disabled={locState === "loading"}
+      className="w-full flex items-center px-4 h-[72px] rounded-2xl gradient-location shadow-loc transition-all active:scale-95 disabled:opacity-80"
+    >
+      <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center mr-4 shrink-0">
+        {locState === "loading"
+          ? <Loader2 size={24} color="#fff" className="animate-spin" />
+          : <MapPin size={24} color="#fff" />
+        }
+      </div>
+      <div className="flex-1">
+        <p className="text-white font-black text-[17px] font-display">
+          {locState === "loading" ? "Getting location..." : "Send My Location"}
+        </p>
+        <p className="text-white/70 text-[12px] font-body">Share GPS location with owner</p>
+      </div>
+      {locState !== "loading" && (
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+          <MapPin size={18} color="#fff" />
+        </div>
+      )}
+    </button>
+  );
+}

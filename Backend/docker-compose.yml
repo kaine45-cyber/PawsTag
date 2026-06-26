@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pawstag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pawstag
+      POSTGRES_USER: pawstag
+      POSTGRES_PASSWORD: pawstag
+    ports:
+      - "5433:5432"          # 5433 ở host để tránh PostgreSQL có sẵn trên 5432
+    volumes:
+      - pawstag_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pawstag -d pawstag"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pawstag_pgdata:

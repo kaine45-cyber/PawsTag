@@ -18,6 +18,7 @@ import vn.pawstag.mapper.PetMapper;
 import vn.pawstag.repository.OwnerRepository;
 import vn.pawstag.repository.ScanLogRepository;
 import vn.pawstag.repository.TagRepository;
+import vn.pawstag.service.GeocodingService;
 import vn.pawstag.service.NotificationService;
 import vn.pawstag.service.ScanService;
 
@@ -31,17 +32,20 @@ public class ScanServiceImpl implements ScanService {
     private final ScanLogRepository scanLogRepository;
     private final OwnerRepository ownerRepository;
     private final NotificationService notificationService;
+    private final GeocodingService geocodingService;
     private final PetMapper petMapper;
 
     public ScanServiceImpl(TagRepository tagRepository,
                            ScanLogRepository scanLogRepository,
                            OwnerRepository ownerRepository,
                            NotificationService notificationService,
+                           GeocodingService geocodingService,
                            PetMapper petMapper) {
         this.tagRepository = tagRepository;
         this.scanLogRepository = scanLogRepository;
         this.ownerRepository = ownerRepository;
         this.notificationService = notificationService;
+        this.geocodingService = geocodingService;
         this.petMapper = petMapper;
     }
 
@@ -64,11 +68,12 @@ public class ScanServiceImpl implements ScanService {
         Tag tag = tagRepository.findByPublicCode(normalize(request.publicCode()))
                 .orElseThrow(() -> new ResourceNotFoundException("Tag code not found"));
 
+        String locationName = geocodingService.reverse(request.lat(), request.lng());
         ScanLog log = ScanLog.builder()
                 .tag(tag)
                 .latitude(request.lat())
                 .longitude(request.lng())
-                .locationName(null)                       // reverse-geocode ở Phase 6
+                .locationName(locationName)               // reverse-geocode (OSM Nominatim)
                 .userAgent(request.userAgent())
                 .deviceType(detectDevice(request.userAgent()))
                 .build();
@@ -120,7 +125,7 @@ public class ScanServiceImpl implements ScanService {
                 p.getName(),
                 p.getType(),
                 p.getBreed(),
-                petMapper.ageOf(p),
+                petMapper.ageMonthsOf(p),
                 p.getGender(),
                 petMapper.weightOf(p),
                 p.getColor(),

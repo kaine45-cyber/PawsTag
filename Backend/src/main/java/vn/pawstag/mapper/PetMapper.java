@@ -98,7 +98,7 @@ public class PetMapper {
                 p.getBreed(),
                 p.getGender(),
                 p.getBirthDate() != null ? p.getBirthDate().toString() : null,
-                computeAge(p.getBirthDate()),
+                computeAgeMonths(p.getBirthDate()),
                 formatWeight(p.getWeight()),
                 p.getColor(),
                 p.getCollar(),
@@ -127,25 +127,22 @@ public class PetMapper {
         );
     }
 
-    /** Public helper dùng lại cho PublicPetResponse. */
-    public String ageOf(Pet p) {
-        return computeAge(p.getBirthDate());
+    /** Public helper dùng lại cho PublicPetResponse/Passport. Tổng số tháng tuổi (locale-neutral). */
+    public Integer ageMonthsOf(Pet p) {
+        return computeAgeMonths(p.getBirthDate());
     }
 
     public String weightOf(Pet p) {
         return formatWeight(p.getWeight());
     }
 
-    /** "2 years" / "8 months" / "Newborn" — null nếu chưa có birthDate. */
-    private String computeAge(LocalDate birthDate) {
+    /** Tổng số tháng tuổi tính từ birthDate — null nếu chưa có / ngày sinh trong tương lai.
+     *  Không kèm chữ tiếng Anh: frontend tự format sang chuỗi hiển thị theo ngôn ngữ. */
+    private Integer computeAgeMonths(LocalDate birthDate) {
         if (birthDate == null) return null;
         Period p = Period.between(birthDate, LocalDate.now());
         if (p.isNegative()) return null;
-        int years = p.getYears();
-        if (years >= 1) return years + (years == 1 ? " year" : " years");
-        int months = p.getMonths();
-        if (months >= 1) return months + (months == 1 ? " month" : " months");
-        return "Newborn";
+        return p.getYears() * 12 + p.getMonths();
     }
 
     /** "12.5" / "25" — bỏ số 0 thừa. */

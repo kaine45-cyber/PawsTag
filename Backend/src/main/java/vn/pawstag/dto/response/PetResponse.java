@@ -15,7 +15,7 @@ public record PetResponse(
         String breed,
         String gender,
         String birthDate,        // ISO yyyy-MM-dd
-        String age,              // tính từ birthDate
+        Integer ageMonths,       // tổng số tháng tuổi (frontend tự format theo ngôn ngữ)
         String weight,           // số dạng chuỗi "12.5"
         String color,
         String collar,

@@ -4,29 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Eye, EyeOff, Check, ArrowRight } from "lucide-react";
 import { authService } from "@/services/auth.service";
+import { useI18n } from "@/i18n/LanguageContext";
 
 const CORGI = "/images/corgi.jpg";
 
 const PET_TYPES = [
-  { key: "dog",   emoji: "🐕", label: "Dog"   },
-  { key: "cat",   emoji: "🐈", label: "Cat"   },
-  { key: "other", emoji: "🐰", label: "Other" },
+  { key: "dog",   emoji: "🐕", labelKey: "rg.dog"   },
+  { key: "cat",   emoji: "🐈", labelKey: "rg.cat"   },
+  { key: "other", emoji: "🐰", labelKey: "rg.other" },
 ];
 
-const PLAN = [
-  "1 pet profile & QR tag",
-  "Emergency contact page",
-  "Scan notifications",
-  "Basic pet passport",
-  "Community lost pet alerts",
-];
-
-const NEXT_STEPS = [
-  "Add your pet's photo & info",
-  "Set up emergency contacts",
-  "Get your QR & NFC tag",
-  "Attach tag to pet's collar",
-];
+const PLAN_KEYS = ["rg.plan1", "rg.plan2", "rg.plan3", "rg.plan4", "rg.plan5"];
+const NEXT_STEP_KEYS = ["rg.next1", "rg.next2", "rg.next3", "rg.next4"];
 
 function pwStrength(pw: string) {
   let s = 0;
@@ -41,6 +30,7 @@ const inputClass =
   "w-full h-[52px] px-[18px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]";
 
 export default function RegisterPage() {
+  const { t } = useI18n();
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -63,9 +53,9 @@ export default function RegisterPage() {
 
   function goToStep2(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || !email || !password) { setError("Please fill in all fields."); return; }
-    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
-    if (!terms) { setError("Please accept the Terms of Service."); return; }
+    if (!name || !email || !password) { setError(t("rg.fillAll")); return; }
+    if (password.length < 8) { setError(t("rg.pwMin")); return; }
+    if (!terms) { setError(t("rg.acceptTerms")); return; }
     setError("");
     setStep(2);
   }
@@ -78,7 +68,7 @@ export default function RegisterPage() {
       localStorage.setItem("pawtag_token", token);
       setStep(3);
     } catch {
-      setError("Registration failed. Email may already be in use.");
+      setError(t("rg.failed"));
       setStep(1);
     } finally {
       setLoading(false);
@@ -97,24 +87,24 @@ export default function RegisterPage() {
             </div>
           </div>
           <div className="flex gap-3 text-[22px] mb-2">🐾 ✨ 🏷️</div>
-          <h1 className="text-[30px] font-black text-[#1A2332] font-display">Account Created!</h1>
+          <h1 className="text-[30px] font-black text-[#1A2332] font-display">{t("rg.success")}</h1>
           <p className="text-[15px] text-[#6B7A8D] font-body text-center mt-2 leading-relaxed">
-            Welcome to PawsTag! Create your first pet profile to get a smart QR + NFC tag.
+            {t("rg.welcome")}
           </p>
 
           <div className="w-full flex flex-col gap-3 mt-6">
-            {NEXT_STEPS.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 bg-[#EEF2FB] rounded-2xl px-4 py-3.5">
+            {NEXT_STEP_KEYS.map((k, i) => (
+              <div key={k} className="flex items-center gap-3 bg-[#EEF2FB] rounded-2xl px-4 py-3.5">
                 <span className="w-9 h-9 rounded-full border-2 border-[#4A8FE8] flex items-center justify-center text-[14px] font-bold text-[#4A8FE8] font-display shrink-0">
                   {i + 1}
                 </span>
-                <p className="text-[15px] text-[#1A2332] font-body">{s}</p>
+                <p className="text-[15px] text-[#1A2332] font-body">{t(k)}</p>
               </div>
             ))}
           </div>
 
           <div className="w-full mt-5 rounded-2xl bg-[#EDF7F2] border border-[#22C55E]/20 px-4 py-3 text-center">
-            <p className="text-[13px] font-bold text-[#2A6B47] font-display">🎁 First tag ships FREE when you order within 24 hours!</p>
+            <p className="text-[13px] font-bold text-[#2A6B47] font-display">🎁 {t("rg.shipFree")}</p>
           </div>
 
           <button
@@ -122,7 +112,7 @@ export default function RegisterPage() {
             onClick={() => { window.location.href = "/pet/create"; }}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl gradient-premium text-white font-extrabold text-[17px] font-display shadow-cta transition-all active:scale-95 mt-6"
           >
-            🚀 Create My First Pet Tag!
+            🚀 {t("rg.createFirst")}
           </button>
         </div>
       </div>
@@ -144,8 +134,8 @@ export default function RegisterPage() {
           </button>
         )}
         <div className="flex-1">
-          <h1 className="text-[22px] font-black text-[#1A2332] font-display leading-none">Create Account</h1>
-          <p className="text-[13px] text-[#9BAABB] font-body mt-1">Step {step} of 3</p>
+          <h1 className="text-[22px] font-black text-[#1A2332] font-display leading-none">{t("rg.createAccount")}</h1>
+          <p className="text-[13px] text-[#9BAABB] font-body mt-1">{t("rg.step").replace("{n}", String(step))}</p>
         </div>
         <div className="flex gap-1.5">
           {[1, 2, 3].map((s) => (
@@ -164,49 +154,49 @@ export default function RegisterPage() {
                 <img src={CORGI} alt="Pet" className="w-full h-full rounded-[30px] object-cover border-4 border-white shadow-xl" />
                 <span className="absolute -bottom-1 -right-1 text-[28px]">🎉</span>
               </div>
-              <h2 className="text-[30px] font-black text-[#1A2332] font-display text-center leading-tight">Join 10,000+ pet families!</h2>
-              <p className="text-[15px] text-[#6B7A8D] font-body mt-2">Create your free PawsTag account</p>
+              <h2 className="text-[30px] font-black text-[#1A2332] font-display text-center leading-tight">{t("rg.join")}</h2>
+              <p className="text-[15px] text-[#6B7A8D] font-body mt-2">{t("rg.subtitle")}</p>
             </div>
 
             {/* Social */}
             <div className="grid grid-cols-2 gap-3 mb-5">
-              <button type="button" onClick={() => setError("Social sign-up is coming soon.")} className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95">
+              <button type="button" onClick={() => setError(t("rg.socialSoon"))} className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95">
                 <span className="text-[18px]">🌐</span>
-                <span className="text-[13px] font-semibold text-[#1A2332] font-body">Continue with Google</span>
+                <span className="text-[13px] font-semibold text-[#1A2332] font-body">{t("rg.google")}</span>
               </button>
-              <button type="button" onClick={() => setError("Social sign-up is coming soon.")} className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95">
+              <button type="button" onClick={() => setError(t("rg.socialSoon"))} className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95">
                 <span className="text-[18px]">📘</span>
-                <span className="text-[13px] font-semibold text-[#1A2332] font-body">Continue with FB</span>
+                <span className="text-[13px] font-semibold text-[#1A2332] font-body">{t("rg.facebook")}</span>
               </button>
             </div>
 
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 h-px bg-[#E1E7F0]" />
-              <span className="text-[13px] text-[#9BAABB] font-body">or with email</span>
+              <span className="text-[13px] text-[#9BAABB] font-body">{t("rg.orEmail")}</span>
               <div className="flex-1 h-px bg-[#E1E7F0]" />
             </div>
 
             <div className="flex flex-col gap-4">
               <div>
-                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">Full Name</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sarah Nguyen" autoComplete="name" className={inputClass} />
+                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">{t("rg.fullName")}</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("rg.namePlaceholder")} autoComplete="name" className={inputClass} />
               </div>
               <div>
-                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">Email Address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" autoComplete="email" className={inputClass} />
+                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">{t("rg.email")}</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("rg.emailPlaceholder")} autoComplete="email" className={inputClass} />
               </div>
               <div>
-                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">Phone Number</label>
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+84 901 234 567" autoComplete="tel" className={inputClass} />
+                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">{t("rg.phone")}</label>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t("rg.phonePlaceholder")} autoComplete="tel" className={inputClass} />
               </div>
               <div>
-                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">Password</label>
+                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">{t("rg.password")}</label>
                 <div className="relative">
                   <input
                     type={showPass ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 8 characters"
+                    placeholder={t("rg.pwPlaceholder")}
                     autoComplete="new-password"
                     className={`${inputClass} pr-12`}
                   />
@@ -223,7 +213,7 @@ export default function RegisterPage() {
                       ))}
                     </div>
                     <p className={`text-[13px] font-bold font-display mt-1.5 ${strong ? "text-[#22C55E]" : "text-[#F59E0B]"}`}>
-                      {strong ? "Strong password ✓" : "Keep going — add numbers & length"}
+                      {strong ? t("rg.strong") : t("rg.keepGoing")}
                     </p>
                   </>
                 )}
@@ -236,45 +226,45 @@ export default function RegisterPage() {
                   {terms && <Check size={14} color="#fff" strokeWidth={3} />}
                 </span>
                 <span className="text-[14px] text-[#1A2332] font-body leading-relaxed">
-                  I agree to PawsTag&apos;s <span className="text-[#4A8FE8] font-semibold">Terms of Service</span> and <span className="text-[#4A8FE8] font-semibold">Privacy Policy</span>
+                  {t("rg.agree")} <span className="text-[#4A8FE8] font-semibold">{t("rg.terms")}</span> {t("rg.and")} <span className="text-[#4A8FE8] font-semibold">{t("rg.privacy")}</span>
                 </span>
               </label>
 
               {error && <p className="text-[13px] text-[#EF4444] font-body text-center">{error}</p>}
 
               <button type="submit" className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl gradient-brand text-white font-extrabold text-[18px] font-display shadow-cta transition-all active:scale-95">
-                Create Account <ArrowRight size={20} />
+                {t("rg.createAccount")} <ArrowRight size={20} />
               </button>
             </div>
 
             <p className="text-center text-[15px] text-[#6B7A8D] font-body mt-6">
-              Already have an account?{" "}
-              <Link href="/login" className="text-[#4A8FE8] font-bold font-display">Sign In</Link>
+              {t("rg.haveAccount")}{" "}
+              <Link href="/login" className="text-[#4A8FE8] font-bold font-display">{t("rg.signIn")}</Link>
             </p>
           </form>
         )}
 
         {step === 2 && (
           <div className="flex flex-col mt-5">
-            <h2 className="text-[28px] font-black text-[#1A2332] font-display">Tell us about your pets 🐾</h2>
-            <p className="text-[15px] text-[#6B7A8D] font-body mt-1">We&apos;ll customize PawsTag for you</p>
+            <h2 className="text-[28px] font-black text-[#1A2332] font-display">{t("rg.tellPets")} 🐾</h2>
+            <p className="text-[15px] text-[#6B7A8D] font-body mt-1">{t("rg.customize")}</p>
 
-            <p className="text-[16px] font-bold text-[#1A2332] font-display mt-7 mb-3">What kind of pet do you have?</p>
+            <p className="text-[16px] font-bold text-[#1A2332] font-display mt-7 mb-3">{t("rg.whatPet")}</p>
             <div className="grid grid-cols-3 gap-3">
-              {PET_TYPES.map((t) => (
+              {PET_TYPES.map((pt) => (
                 <button
-                  key={t.key}
+                  key={pt.key}
                   type="button"
-                  onClick={() => setPetType(t.key)}
-                  className={`flex flex-col items-center gap-2 py-5 rounded-2xl bg-white transition-all active:scale-95 ${petType === t.key ? "border-2 border-[#4A8FE8] shadow-cta" : "border border-[#EEF2F7] shadow-card"}`}
+                  onClick={() => setPetType(pt.key)}
+                  className={`flex flex-col items-center gap-2 py-5 rounded-2xl bg-white transition-all active:scale-95 ${petType === pt.key ? "border-2 border-[#4A8FE8] shadow-cta" : "border border-[#EEF2F7] shadow-card"}`}
                 >
-                  <span className="text-[34px]">{t.emoji}</span>
-                  <span className={`text-[15px] font-bold font-display ${petType === t.key ? "text-[#4A8FE8]" : "text-[#6B7A8D]"}`}>{t.label}</span>
+                  <span className="text-[34px]">{pt.emoji}</span>
+                  <span className={`text-[15px] font-bold font-display ${petType === pt.key ? "text-[#4A8FE8]" : "text-[#6B7A8D]"}`}>{t(pt.labelKey)}</span>
                 </button>
               ))}
             </div>
 
-            <p className="text-[16px] font-bold text-[#1A2332] font-display mt-7 mb-3">How many pets?</p>
+            <p className="text-[16px] font-bold text-[#1A2332] font-display mt-7 mb-3">{t("rg.howMany")}</p>
             <div className="grid grid-cols-4 gap-3">
               {["1", "2", "3", "4+"].map((c) => (
                 <button
@@ -290,14 +280,14 @@ export default function RegisterPage() {
 
             {/* Free plan */}
             <div className="mt-7 rounded-2xl bg-gradient-to-br from-[#EEF5FF] to-[#EDF7F2] p-5">
-              <p className="text-[16px] font-extrabold text-[#4A8FE8] font-display mb-3">🎁 Your free plan includes:</p>
+              <p className="text-[16px] font-extrabold text-[#4A8FE8] font-display mb-3">🎁 {t("rg.planTitle")}</p>
               <div className="flex flex-col gap-2.5">
-                {PLAN.map((p) => (
-                  <div key={p} className="flex items-center gap-3">
+                {PLAN_KEYS.map((k) => (
+                  <div key={k} className="flex items-center gap-3">
                     <span className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shrink-0">
                       <Check size={14} color="#fff" strokeWidth={3} />
                     </span>
-                    <span className="text-[15px] text-[#1A2332] font-body">{p}</span>
+                    <span className="text-[15px] text-[#1A2332] font-body">{t(k)}</span>
                   </div>
                 ))}
               </div>
@@ -314,10 +304,10 @@ export default function RegisterPage() {
               {loading ? (
                 <>
                   <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  <span>Creating...</span>
+                  <span>{t("rg.creating")}</span>
                 </>
               ) : (
-                <>Continue <ArrowRight size={20} /></>
+                <>{t("rg.continue")} <ArrowRight size={20} /></>
               )}
             </button>
           </div>

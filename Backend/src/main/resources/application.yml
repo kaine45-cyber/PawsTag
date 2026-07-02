@@ -43,6 +43,11 @@ app:
   upload:
     dir: ${UPLOAD_DIR:uploads}                       # thư mục lưu file trên đĩa
     base-url: ${UPLOAD_BASE_URL:http://localhost:8080/api}  # tiền tố URL công khai
+  geocoding:
+    enabled: ${GEOCODING_ENABLED:true}               # reverse-geocode khi scan
+    url: ${GEOCODING_URL:https://nominatim.openstreetmap.org}
+  ratelimit:
+    per-minute: ${RATE_LIMIT_PER_MINUTE:100}         # giới hạn req/phút/IP cho endpoint công khai
 
 logging:
   level:

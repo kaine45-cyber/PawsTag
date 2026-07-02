@@ -14,4 +14,15 @@ export const ownerService = {
       headers: { "Content-Type": "multipart/form-data" },
     })).data.data;
   },
+
+  changePassword: async (currentPassword: string, newPassword: string) =>
+    (await api.put("/owners/me/password", { currentPassword, newPassword })).data,
+
+  getNotifPrefs: async (): Promise<NotifPrefs> =>
+    (await api.get("/owners/me/notifications")).data.data,
+
+  updateNotifPrefs: async (prefs: Partial<NotifPrefs>): Promise<NotifPrefs> =>
+    (await api.put("/owners/me/notifications", prefs)).data.data,
 };
+
+export interface NotifPrefs { scans: boolean; lost: boolean; updates: boolean }

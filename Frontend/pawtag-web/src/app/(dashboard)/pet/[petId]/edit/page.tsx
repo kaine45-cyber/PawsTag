@@ -7,6 +7,7 @@ import { ArrowLeft, Camera, Loader2, Trash2, Plus } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { petService, type EmergencyContactInput } from "@/services/pet.service";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n/LanguageContext";
 import type { Pet } from "@/types";
 
 const inputClass =
@@ -18,6 +19,7 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
   const { petId } = use(params);
   const router = useRouter();
   const { refreshPets } = useAuth();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,7 +48,7 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
       });
       if (p.photo) setPhotoPreview(p.photo);
       setContacts((p.emergencyContacts ?? []).map((c) => ({ name: c.name ?? "", phone: c.phone ?? "" })));
-    }).catch(() => setError("Could not load pet.")).finally(() => { if (on) setLoading(false); });
+    }).catch(() => setError(t("ed.loadFailed"))).finally(() => { if (on) setLoading(false); });
     return () => { on = false; };
   }, [petId]);
 
@@ -63,7 +65,7 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
   const removeContact = (i: number) => setContacts((p) => p.filter((_, idx) => idx !== i));
 
   async function save() {
-    if (!f.name.trim()) { setError("Pet name is required."); return; }
+    if (!f.name.trim()) { setError(t("ed.nameRequired")); return; }
     setError(""); setSaving(true);
     try {
       const emergencyContacts: EmergencyContactInput[] = contacts
@@ -91,7 +93,7 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
       await refreshPets();
       router.push(ROUTES.petDetail(petId));
     } catch {
-      setError("Could not save changes. Please try again.");
+      setError(t("ed.saveFailed"));
     } finally { setSaving(false); }
   }
 
@@ -101,72 +103,72 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
     <div className="flex flex-col min-h-full bg-[#F7F9FC]">
       <header className="bg-white px-5 pt-4 pb-4 flex items-center gap-3">
         <Link href={ROUTES.petDetail(petId)} className="w-11 h-11 rounded-full bg-[#EEF2FB] flex items-center justify-center active:scale-90"><ArrowLeft size={18} className="text-[#1A2332]" /></Link>
-        <h1 className="text-[20px] font-black text-[#1A2332] font-display">Edit Pet Profile</h1>
+        <h1 className="text-[20px] font-black text-[#1A2332] font-display">{t("ed.title")}</h1>
       </header>
 
       <div className="px-5 py-5 flex flex-col gap-5">
         {/* Photo */}
         <label className="relative h-44 rounded-3xl overflow-hidden border-2 border-dashed border-[#4A8FE8]/30 bg-[#EEF5FF]/30 flex items-center justify-center cursor-pointer">
           {photoPreview ? <img src={photoPreview} alt="" className="w-full h-full object-cover" /> : (
-            <div className="flex flex-col items-center gap-2 text-[#4A8FE8]"><Camera size={32} /><span className="text-[14px] font-bold font-display">Change photo</span></div>
+            <div className="flex flex-col items-center gap-2 text-[#4A8FE8]"><Camera size={32} /><span className="text-[14px] font-bold font-display">{t("ed.changePhoto")}</span></div>
           )}
-          <span className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-white/90 text-[12px] font-bold text-[#4A8FE8] font-display flex items-center gap-1"><Camera size={13} /> Change</span>
+          <span className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-white/90 text-[12px] font-bold text-[#4A8FE8] font-display flex items-center gap-1"><Camera size={13} /> {t("ed.change")}</span>
           <input type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
         </label>
 
-        <Section title="Basic Info">
-          <Lbl t="Pet Name *"><input className={inputClass} value={f.name} onChange={(e) => set("name", e.target.value)} aria-label="Name" /></Lbl>
+        <Section title={t("ed.basicInfo")}>
+          <Lbl t={t("cw.petName")}><input className={inputClass} value={f.name} onChange={(e) => set("name", e.target.value)} aria-label="Name" /></Lbl>
           <div className="grid grid-cols-2 gap-3">
-            <Lbl t="Species">
+            <Lbl t={t("petd.species")}>
               <select className={inputClass} value={f.species} onChange={(e) => set("species", e.target.value)} aria-label="Species">
                 {["dog", "cat", "rabbit", "bird", "other"].map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
               </select>
             </Lbl>
-            <Lbl t="Gender">
+            <Lbl t={t("ed.gender")}>
               <select className={inputClass} value={f.gender} onChange={(e) => set("gender", e.target.value)} aria-label="Gender">
-                <option value="">—</option><option value="male">Male</option><option value="female">Female</option>
+                <option value="">—</option><option value="male">{t("common.male")}</option><option value="female">{t("common.female")}</option>
               </select>
             </Lbl>
           </div>
-          <Lbl t="Breed"><input className={inputClass} value={f.breed} onChange={(e) => set("breed", e.target.value)} aria-label="Breed" /></Lbl>
+          <Lbl t={t("ed.breed")}><input className={inputClass} value={f.breed} onChange={(e) => set("breed", e.target.value)} aria-label="Breed" /></Lbl>
           <div className="grid grid-cols-2 gap-3">
-            <Lbl t="Birth Date"><input type="date" className={inputClass} value={f.birthDate} onChange={(e) => set("birthDate", e.target.value)} aria-label="Birth date" /></Lbl>
-            <Lbl t="Weight (kg)"><input type="number" className={inputClass} value={f.weight} onChange={(e) => set("weight", e.target.value)} aria-label="Weight" /></Lbl>
+            <Lbl t={t("form.birthDate")}><input type="date" className={inputClass} value={f.birthDate} onChange={(e) => set("birthDate", e.target.value)} aria-label="Birth date" /></Lbl>
+            <Lbl t={t("ed.weight")}><input type="number" className={inputClass} value={f.weight} onChange={(e) => set("weight", e.target.value)} aria-label="Weight" /></Lbl>
           </div>
-          <Lbl t="Color"><input className={inputClass} value={f.color} onChange={(e) => set("color", e.target.value)} aria-label="Color" /></Lbl>
-          <Lbl t="Identifying Features"><textarea rows={2} className={`${inputClass} h-auto py-3`} value={f.identificationNotes} onChange={(e) => set("identificationNotes", e.target.value)} aria-label="Identifying features" /></Lbl>
+          <Lbl t={t("ed.color")}><input className={inputClass} value={f.color} onChange={(e) => set("color", e.target.value)} aria-label="Color" /></Lbl>
+          <Lbl t={t("cw.features")}><textarea rows={2} className={`${inputClass} h-auto py-3`} value={f.identificationNotes} onChange={(e) => set("identificationNotes", e.target.value)} aria-label="Identifying features" /></Lbl>
         </Section>
 
-        <Section title="Contact & Message">
-          <Lbl t="Contact Phone"><input type="tel" className={inputClass} value={f.contactPhone} onChange={(e) => set("contactPhone", e.target.value)} aria-label="Contact phone" /></Lbl>
-          <Lbl t="Emergency Message"><textarea rows={3} className={`${inputClass} h-auto py-3`} value={f.emergencyMessage} onChange={(e) => set("emergencyMessage", e.target.value)} aria-label="Emergency message" /></Lbl>
+        <Section title={t("ed.contactMsg")}>
+          <Lbl t={t("ed.contactPhone")}><input type="tel" className={inputClass} value={f.contactPhone} onChange={(e) => set("contactPhone", e.target.value)} aria-label="Contact phone" /></Lbl>
+          <Lbl t={t("ed.emergencyMessage")}><textarea rows={3} className={`${inputClass} h-auto py-3`} value={f.emergencyMessage} onChange={(e) => set("emergencyMessage", e.target.value)} aria-label="Emergency message" /></Lbl>
         </Section>
 
-        <Section title="Medical">
+        <Section title={t("ed.medical")}>
           <div className="grid grid-cols-2 gap-3">
-            <Lbl t="Blood Type"><input className={inputClass} value={f.bloodType} onChange={(e) => set("bloodType", e.target.value)} aria-label="Blood type" /></Lbl>
-            <Lbl t="Microchip ID"><input className={inputClass} value={f.microchipId} onChange={(e) => set("microchipId", e.target.value)} aria-label="Microchip" /></Lbl>
+            <Lbl t={t("ed.bloodType")}><input className={inputClass} value={f.bloodType} onChange={(e) => set("bloodType", e.target.value)} aria-label="Blood type" /></Lbl>
+            <Lbl t={t("ed.microchip")}><input className={inputClass} value={f.microchipId} onChange={(e) => set("microchipId", e.target.value)} aria-label="Microchip" /></Lbl>
           </div>
-          <Lbl t="Allergies"><input className={inputClass} value={f.allergies} onChange={(e) => set("allergies", e.target.value)} aria-label="Allergies" /></Lbl>
-          <Lbl t="Conditions / Notes"><input className={inputClass} value={f.conditions} onChange={(e) => set("conditions", e.target.value)} aria-label="Conditions" /></Lbl>
-          <Lbl t="Medications"><input className={inputClass} value={f.medications} onChange={(e) => set("medications", e.target.value)} aria-label="Medications" /></Lbl>
+          <Lbl t={t("ed.allergies")}><input className={inputClass} value={f.allergies} onChange={(e) => set("allergies", e.target.value)} aria-label="Allergies" /></Lbl>
+          <Lbl t={t("ed.conditionsNotes")}><input className={inputClass} value={f.conditions} onChange={(e) => set("conditions", e.target.value)} aria-label="Conditions" /></Lbl>
+          <Lbl t={t("ed.medications")}><input className={inputClass} value={f.medications} onChange={(e) => set("medications", e.target.value)} aria-label="Medications" /></Lbl>
         </Section>
 
-        <Section title="Emergency Contacts">
+        <Section title={t("ed.emergencyContacts")}>
           {contacts.map((c, i) => (
             <div key={i} className="flex flex-col gap-2 bg-[#F7F9FC] rounded-2xl p-3">
-              <div className="flex items-center justify-between"><span className="text-[12px] font-bold text-[#9BAABB] font-display">Contact {i + 1}</span><button type="button" aria-label="Remove" onClick={() => removeContact(i)}><Trash2 size={16} className="text-[#9BAABB]" /></button></div>
-              <input className={inputClass} placeholder="Full name" value={c.name} onChange={(e) => setContact(i, "name", e.target.value)} aria-label="Contact name" />
-              <input className={inputClass} placeholder="Phone" value={c.phone} onChange={(e) => setContact(i, "phone", e.target.value)} aria-label="Contact phone" />
+              <div className="flex items-center justify-between"><span className="text-[12px] font-bold text-[#9BAABB] font-display">{t("ed.contactWord")} {i + 1}</span><button type="button" aria-label="Remove" onClick={() => removeContact(i)}><Trash2 size={16} className="text-[#9BAABB]" /></button></div>
+              <input className={inputClass} placeholder={t("ed.fullName")} value={c.name} onChange={(e) => setContact(i, "name", e.target.value)} aria-label="Contact name" />
+              <input className={inputClass} placeholder={t("ed.phonePlaceholder")} value={c.phone} onChange={(e) => setContact(i, "phone", e.target.value)} aria-label="Contact phone" />
             </div>
           ))}
-          <button type="button" onClick={addContact} className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-[#4A8FE8]/40 text-[#4A8FE8] font-bold font-display"><Plus size={16} /> Add Contact</button>
+          <button type="button" onClick={addContact} className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-[#4A8FE8]/40 text-[#4A8FE8] font-bold font-display"><Plus size={16} /> {t("ed.addContact")}</button>
         </Section>
 
         {error && <p className="text-[13px] text-[#EF4444] font-body text-center">{error}</p>}
 
         <button type="button" onClick={save} disabled={saving} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl gradient-brand text-white font-extrabold text-[17px] font-display shadow-cta active:scale-95 disabled:opacity-70">
-          {saving ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Saving...</> : "Save Changes"}
+          {saving ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> {t("ed.saving")}</> : t("ed.save")}
         </button>
       </div>
     </div>

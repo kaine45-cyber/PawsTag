@@ -53,6 +53,18 @@ public class Owner {
     @Column(nullable = false)
     private String role;
 
+    @Builder.Default
+    @Column(name = "notif_scans", nullable = false)
+    private boolean notifScans = true;
+
+    @Builder.Default
+    @Column(name = "notif_lost", nullable = false)
+    private boolean notifLost = true;
+
+    @Builder.Default
+    @Column(name = "notif_updates", nullable = false)
+    private boolean notifUpdates = true;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

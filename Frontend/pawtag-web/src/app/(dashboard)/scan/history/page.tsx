@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { MapPin, Clock, Loader2 } from "lucide-react";
 import { scanService } from "@/services/scan.service";
+import { useI18n } from "@/i18n/LanguageContext";
+import { localizeRelativeTime } from "@/i18n/localizeNotification";
 import type { ScanLog } from "@/types";
 
 export default function HistoryPage() {
+  const { t } = useI18n();
   const [scans, setScans] = useState<ScanLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState("All");
@@ -46,7 +49,7 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col min-h-full px-5 pt-6 pb-8 gap-5">
 
-      <h1 className="text-[22px] font-black text-[#1A2332] font-display">Scan History</h1>
+      <h1 className="text-[22px] font-black text-[#1A2332] font-display">{t("history.title")}</h1>
 
       {/* Filter chips */}
       {chips.length > 1 && (
@@ -62,7 +65,7 @@ export default function HistoryPage() {
                   : "bg-white text-[#6B7A8D] shadow-card border border-[rgba(74,143,232,0.1)]"
               }`}
             >
-              {c}
+              {c === "All" ? t("notifs.all") : c}
             </button>
           ))}
         </div>
@@ -71,9 +74,9 @@ export default function HistoryPage() {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Total Scans", val: String(scans.length) },
-          { label: "Locations",   val: String(uniqueLocs) },
-          { label: "Pets",        val: String(petCount) },
+          { label: t("history.totalScans"), val: String(scans.length) },
+          { label: t("history.locations"),  val: String(uniqueLocs) },
+          { label: t("history.pets"),       val: String(petCount) },
         ].map(({ label, val }) => (
           <div key={label} className="bg-white rounded-2xl p-3 shadow-card text-center">
             <p className="text-[20px] font-black text-[#4A8FE8] font-display">{val}</p>
@@ -88,8 +91,8 @@ export default function HistoryPage() {
           <div className="w-16 h-16 rounded-full bg-[#EEF2F7] flex items-center justify-center">
             <Clock size={28} className="text-[#9BAABB]" />
           </div>
-          <p className="text-[14px] font-bold text-[#6B7A8D] font-display">No scans yet</p>
-          <p className="text-[12px] text-[#9BAABB] font-body">Scans of your pets&apos; tags will appear here</p>
+          <p className="text-[14px] font-bold text-[#6B7A8D] font-display">{t("history.noScans")}</p>
+          <p className="text-[12px] text-[#9BAABB] font-body">{t("history.noScansDesc")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -105,7 +108,7 @@ export default function HistoryPage() {
                   : <MapPin size={16} className="text-[#4A8FE8]" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-[#1A2332] font-display">{s.petName} was scanned</p>
+                <p className="text-[13px] font-bold text-[#1A2332] font-display">{s.petName} {t("common.wasScanned")}</p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <MapPin size={10} className="text-[#4A8FE8] shrink-0" />
                   <p className="text-[11px] text-[#6B7A8D] font-body truncate">{s.location}</p>
@@ -113,7 +116,7 @@ export default function HistoryPage() {
               </div>
               <div className="flex flex-col items-end shrink-0">
                 <Clock size={10} className="text-[#9BAABB] mb-0.5" />
-                <p className="text-[10px] text-[#9BAABB] font-body text-right leading-tight">{s.timeAgo}</p>
+                <p className="text-[10px] text-[#9BAABB] font-body text-right leading-tight">{localizeRelativeTime(s.timeAgo, t)}</p>
               </div>
             </div>
           ))}

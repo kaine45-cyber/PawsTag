@@ -1,15 +1,19 @@
+"use client";
+
 import Link from "next/link";
 import { PawPrint, Check, ArrowRight, Star } from "lucide-react";
+import { useI18n } from "@/i18n/LanguageContext";
 
 const FEATURES = [
-  { emoji: "🔲", title: "QR Pet Profile",     desc: "Instant scan reveals full pet info and emergency contacts", bg: "bg-[#F3F0FF]", arrow: "text-[#8B5CF6]", arrowBg: "bg-[#F3F0FF]" },
-  { emoji: "📡", title: "NFC Pet Tag",        desc: "Tap-enabled smart tag works with any smartphone",           bg: "bg-[#EDF7F2]", arrow: "text-[#22C55E]", arrowBg: "bg-[#EDF7F2]" },
-  { emoji: "📞", title: "Emergency Contact",  desc: "One-tap call and message to reach owner immediately",       bg: "bg-[#FFF0F0]", arrow: "text-[#FF7B35]", arrowBg: "bg-[#FFF7F0]" },
-  { emoji: "🔔", title: "Scan Notifications", desc: "Get real-time alerts whenever your pet's tag is scanned",    bg: "bg-[#F3F0FF]", arrow: "text-[#8B5CF6]", arrowBg: "bg-[#F3F0FF]" },
-  { emoji: "📋", title: "Pet Passport",       desc: "Complete health records, vaccinations, and ID on the go",   bg: "bg-[#FFF7E8]", arrow: "text-[#F59E0B]", arrowBg: "bg-[#FFF7E8]" },
+  { emoji: "🔲", titleKey: "land.f1t", descKey: "land.f1d", bg: "bg-[#F3F0FF]", arrow: "text-[#8B5CF6]", arrowBg: "bg-[#F3F0FF]" },
+  { emoji: "📡", titleKey: "land.f2t", descKey: "land.f2d", bg: "bg-[#EDF7F2]", arrow: "text-[#22C55E]", arrowBg: "bg-[#EDF7F2]" },
+  { emoji: "📞", titleKey: "land.f3t", descKey: "land.f3d", bg: "bg-[#FFF0F0]", arrow: "text-[#FF7B35]", arrowBg: "bg-[#FFF7F0]" },
+  { emoji: "🔔", titleKey: "land.f4t", descKey: "land.f4d", bg: "bg-[#F3F0FF]", arrow: "text-[#8B5CF6]", arrowBg: "bg-[#F3F0FF]" },
+  { emoji: "📋", titleKey: "land.f5t", descKey: "land.f5d", bg: "bg-[#FFF7E8]", arrow: "text-[#F59E0B]", arrowBg: "bg-[#FFF7E8]" },
 ];
 
 export default function LandingPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#EEF2FB] to-[#F7F9FC] flex flex-col">
 
@@ -25,7 +29,7 @@ export default function LandingPage() {
           href="/login"
           className="px-5 py-2 rounded-full border-2 border-[#4A8FE8]/40 text-[#4A8FE8] text-[14px] font-bold font-display transition-all active:scale-95"
         >
-          Sign In
+          {t("land.signIn")}
         </Link>
       </header>
 
@@ -54,18 +58,17 @@ export default function LandingPage() {
 
         {/* ── Title ── */}
         <h1 className="text-[40px] font-black text-[#1A2332] font-display text-center leading-[1.1]">
-          Every Pet Deserves<br />
-          <span className="text-[#4A8FE8]">a Way Home</span>
+          {t("land.heroTitle1")}<br />
+          <span className="text-[#4A8FE8]">{t("land.heroTitle2")}</span>
         </h1>
         <p className="text-[15px] text-[#6B7A8D] font-body text-center mt-4 leading-relaxed">
-          Smart QR &amp; NFC pet tags that connect finders instantly to your contact info,
-          pet profile, and emergency details.
+          {t("land.heroSub")}
         </p>
 
         {/* ── Stat chips ── */}
         <div className="flex items-center justify-center gap-2.5 mt-6 flex-wrap">
-          <span className="px-4 py-2 rounded-full bg-white/70 text-[13px] font-bold text-[#4A8FE8] font-display shadow-card">10K+ Pets Safe</span>
-          <span className="px-4 py-2 rounded-full bg-white/70 text-[13px] font-bold text-[#4A8FE8] font-display shadow-card">50K+ Scans</span>
+          <span className="px-4 py-2 rounded-full bg-white/70 text-[13px] font-bold text-[#4A8FE8] font-display shadow-card">{t("land.statSafe")}</span>
+          <span className="px-4 py-2 rounded-full bg-white/70 text-[13px] font-bold text-[#4A8FE8] font-display shadow-card">{t("land.statScans")}</span>
           <span className="px-4 py-2 rounded-full bg-white/70 text-[13px] font-bold text-[#4A8FE8] font-display shadow-card flex items-center gap-1">
             <Star size={12} fill="#4A8FE8" className="text-[#4A8FE8]" /> 4.9/5
           </span>
@@ -77,29 +80,29 @@ export default function LandingPage() {
           className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl gradient-brand text-white font-extrabold text-[17px] font-display shadow-cta transition-all active:scale-95 mt-7"
         >
           <PawPrint size={20} />
-          Create Free Pet Tag
+          {t("land.createFree")}
         </Link>
         <Link
           href="/login"
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-[#4A8FE8]/30 bg-white text-[#4A8FE8] font-extrabold text-[16px] font-display transition-all active:scale-95 mt-3"
         >
-          🧮 See How It Works
+          🧮 {t("land.howItWorks")}
         </Link>
 
         {/* ── Features ── */}
         <section className="mt-12">
           <h2 className="text-[26px] font-black text-[#1A2332] font-display mb-5">
-            Everything you need 🐶
+            {t("land.everything")} 🐶
           </h2>
           <div className="flex flex-col gap-3">
             {FEATURES.map((f) => (
-              <div key={f.title} className="flex items-center gap-4 bg-white rounded-3xl px-4 py-4 shadow-card">
+              <div key={f.titleKey} className="flex items-center gap-4 bg-white rounded-3xl px-4 py-4 shadow-card">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-[26px] ${f.bg}`}>
                   {f.emoji}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[17px] font-extrabold text-[#1A2332] font-display">{f.title}</p>
-                  <p className="text-[13px] text-[#6B7A8D] font-body leading-snug mt-0.5">{f.desc}</p>
+                  <p className="text-[17px] font-extrabold text-[#1A2332] font-display">{t(f.titleKey)}</p>
+                  <p className="text-[13px] text-[#6B7A8D] font-body leading-snug mt-0.5">{t(f.descKey)}</p>
                 </div>
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${f.arrowBg}`}>
                   <ArrowRight size={16} className={f.arrow} />
@@ -119,8 +122,8 @@ export default function LandingPage() {
                 className="w-14 h-14 rounded-full object-cover border-2 border-white shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-[17px] font-extrabold text-[#1A2332] font-display">Nguyen Thu Ha</p>
-                <p className="text-[13px] text-[#6B7A8D] font-body">Bobby&apos;s Mom 💗</p>
+                <p className="text-[17px] font-extrabold text-[#1A2332] font-display">{t("land.reviewName")}</p>
+                <p className="text-[13px] text-[#6B7A8D] font-body">{t("land.reviewRole")}</p>
               </div>
               <div className="flex gap-0.5 shrink-0 pt-1">
                 {[...Array(5)].map((_, i) => (
@@ -129,8 +132,7 @@ export default function LandingPage() {
               </div>
             </div>
             <p className="text-[15px] text-[#1A2332] font-body leading-relaxed mt-4">
-              &ldquo;PawsTag saved Bobby when he got lost at the park. A kind stranger scanned
-              his tag and called me immediately. Best investment ever!&rdquo;
+              {t("land.review")}
             </p>
           </div>
         </section>
@@ -140,11 +142,11 @@ export default function LandingPage() {
           href="/register"
           className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl gradient-premium text-white font-extrabold text-[18px] font-display shadow-cta transition-all active:scale-95 mt-8"
         >
-          Get Started — It&apos;s Free 🚀
+          {t("land.getStarted")}
         </Link>
 
         <p className="text-center text-[12px] text-[#9BAABB] font-body mt-6">
-          PawsTag · Every pet deserves a way home 🐾
+          {t("land.footer")}
         </p>
       </main>
     </div>

@@ -99,7 +99,7 @@ public class PassportServiceImpl implements PassportService {
                 SCI.getOrDefault(p.getType(), p.getType()),
                 p.getBreed(),
                 p.getBirthDate() != null ? p.getBirthDate().format(LONG) : "—",
-                petMapper.ageOf(p) != null ? petMapper.ageOf(p) : "—",
+                petMapper.ageMonthsOf(p),
                 p.getWeight() != null ? petMapper.weightOf(p) + " kg" : "—",
                 p.getColor(),
                 p.getEyeColor()

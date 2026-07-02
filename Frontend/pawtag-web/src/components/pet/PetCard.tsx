@@ -12,7 +12,7 @@ export function PetCard({ pet, avatarUrl }: { pet: Pet; avatarUrl: string }) {
       </div>
       <div className="p-3">
         <p className="font-extrabold text-[14px] text-[#1A2332] font-display">{pet.name}</p>
-        <p className="text-[11px] text-[#6B7A8D] font-body">{pet.breed} · {pet.age}</p>
+        <p className="text-[11px] text-[#6B7A8D] font-body">{pet.breed}</p>
       </div>
     </Link>
   );

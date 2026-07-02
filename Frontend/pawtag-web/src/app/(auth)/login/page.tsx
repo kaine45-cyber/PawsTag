@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, PawPrint, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n/LanguageContext";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t }     = useI18n();
   const router    = useRouter();
 
   const [email,    setEmail]    = useState("");
@@ -18,7 +20,7 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) { setError("Please fill in all fields."); return; }
+    if (!email || !password) { setError(t("lg.fillAll")); return; }
     setError("");
     setLoading(true);
     try {
@@ -26,7 +28,7 @@ export default function LoginPage() {
       router.replace("/dashboard");
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg || "Invalid email or password.");
+      setError(msg || t("lg.invalid"));
     } finally {
       setLoading(false);
     }
@@ -65,10 +67,10 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="text-[34px] font-black text-[#1A2332] font-display flex items-center gap-2">
-            Welcome back <span className="text-[28px]">👋</span>
+            {t("lg.welcome")} <span className="text-[28px]">👋</span>
           </h1>
           <p className="text-[15px] text-[#6B7A8D] font-body mt-2 text-center">
-            Sign in to manage your pets&apos; smart tags
+            {t("lg.heroSub")}
           </p>
         </div>
 
@@ -78,7 +80,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setError("Social login is coming soon.")}
+              onClick={() => setError(t("lg.socialSoon"))}
               className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95"
             >
               <span className="text-[18px]">🌐</span>
@@ -86,7 +88,7 @@ export default function LoginPage() {
             </button>
             <button
               type="button"
-              onClick={() => setError("Social login is coming soon.")}
+              onClick={() => setError(t("lg.socialSoon"))}
               className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95"
             >
               <span className="text-[18px]">📘</span>
@@ -96,18 +98,18 @@ export default function LoginPage() {
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-[#EEF2F7]" />
-            <span className="text-[12px] text-[#9BAABB] font-body">or sign in with email</span>
+            <span className="text-[12px] text-[#9BAABB] font-body">{t("lg.orEmail")}</span>
             <div className="flex-1 h-px bg-[#EEF2F7]" />
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">Email</label>
+            <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">{t("lg.email")}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
+              placeholder={t("lg.emailPlaceholder")}
               autoComplete="email"
               className={inputClass}
             />
@@ -115,13 +117,13 @@ export default function LoginPage() {
 
           {/* Password */}
           <div>
-            <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">Password</label>
+            <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">{t("lg.password")}</label>
             <div className="relative">
               <input
                 type={showPass ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={t("lg.pwPlaceholder")}
                 autoComplete="current-password"
                 className={`${inputClass} pr-12`}
               />
@@ -136,7 +138,7 @@ export default function LoginPage() {
             </div>
             <div className="flex justify-end mt-2">
               <button type="button" className="text-[14px] text-[#4A8FE8] font-bold font-display">
-                Forgot password?
+                {t("lg.forgot")}
               </button>
             </div>
           </div>
@@ -153,19 +155,19 @@ export default function LoginPage() {
             {loading ? (
               <>
                 <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                <span>Signing in...</span>
+                <span>{t("lg.signingIn")}</span>
               </>
             ) : (
-              <>Sign In <ArrowRight size={20} /></>
+              <>{t("lg.signIn")} <ArrowRight size={20} /></>
             )}
           </button>
         </form>
 
         {/* Create account */}
         <p className="text-center text-[15px] text-[#6B7A8D] font-body mt-6">
-          Don&apos;t have an account?{" "}
+          {t("lg.noAccount")}{" "}
           <Link href="/register" className="text-[#4A8FE8] font-bold font-display">
-            Create Free Account
+            {t("lg.createFree")}
           </Link>
         </p>
 
@@ -174,16 +176,16 @@ export default function LoginPage() {
           <span className="text-[34px] leading-none shrink-0">🐕</span>
           <div className="min-w-0">
             <p className="text-[14px] text-[#1A2332] font-body leading-relaxed">
-              &ldquo;PawsTag reunited me with Bobby in under 10 minutes when he got lost!&rdquo;
+              {t("lg.testimonial")}
             </p>
-            <p className="text-[14px] font-bold text-[#4A8FE8] font-display mt-1">— Sarah N., Hanoi</p>
+            <p className="text-[14px] font-bold text-[#4A8FE8] font-display mt-1">{t("lg.testimonialBy")}</p>
           </div>
         </div>
 
         {/* Footer */}
         <p className="flex items-center justify-center gap-1.5 text-[13px] text-[#9BAABB] font-body mt-6">
           <PawPrint size={13} className="text-[#9BAABB]" />
-          PawsTag · Helping pets find their way home
+          {t("lg.footer")}
         </p>
       </div>
     </div>

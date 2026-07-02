@@ -24,7 +24,7 @@ public record PassportResponse(
 ) {
     public record Identity(
             String fullName, String species, String breed,
-            String dateOfBirth, String age, String weight,
+            String dateOfBirth, Integer ageMonths, String weight,
             String primaryColor, String eyeColor
     ) {}
 

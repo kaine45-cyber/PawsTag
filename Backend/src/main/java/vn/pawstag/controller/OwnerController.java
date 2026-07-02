@@ -8,8 +8,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import vn.pawstag.dto.request.ChangePasswordRequest;
+import vn.pawstag.dto.request.NotificationPrefsRequest;
 import vn.pawstag.dto.request.OwnerUpdateRequest;
 import vn.pawstag.dto.response.ApiResponse;
+import vn.pawstag.dto.response.NotificationPrefsResponse;
 import vn.pawstag.dto.response.OwnerResponse;
 import vn.pawstag.service.OwnerService;
 
@@ -43,5 +46,26 @@ public class OwnerController {
     public ApiResponse<OwnerResponse> avatar(@AuthenticationPrincipal UserDetails principal,
                                              @RequestParam("file") MultipartFile file) {
         return ApiResponse.ok(ownerService.setAvatar(principal.getUsername(), file), "Avatar updated");
+    }
+
+    @PutMapping("/me/password")
+    @Operation(summary = "Đổi mật khẩu")
+    public ApiResponse<Void> changePassword(@AuthenticationPrincipal UserDetails principal,
+                                            @Valid @RequestBody ChangePasswordRequest request) {
+        ownerService.changePassword(principal.getUsername(), request);
+        return ApiResponse.ok(null, "Password changed");
+    }
+
+    @GetMapping("/me/notifications")
+    @Operation(summary = "Lấy tùy chọn thông báo")
+    public ApiResponse<NotificationPrefsResponse> getNotifPrefs(@AuthenticationPrincipal UserDetails principal) {
+        return ApiResponse.ok(ownerService.getNotifPrefs(principal.getUsername()));
+    }
+
+    @PutMapping("/me/notifications")
+    @Operation(summary = "Cập nhật tùy chọn thông báo")
+    public ApiResponse<NotificationPrefsResponse> updateNotifPrefs(@AuthenticationPrincipal UserDetails principal,
+                                                                   @RequestBody NotificationPrefsRequest request) {
+        return ApiResponse.ok(ownerService.updateNotifPrefs(principal.getUsername(), request), "Preferences updated");
     }
 }

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCheck, MapPin, Trash2, Bell, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { notificationService } from "@/services/notification.service";
+import { useI18n } from "@/i18n/LanguageContext";
+import { localizeNotifTitle, localizeNotifBody, localizeRelativeTime } from "@/i18n/localizeNotification";
 import type { Notification } from "@/types";
 
 /** Icon emoji khi không có ảnh pet — suy từ tiêu đề / loại. */
@@ -22,6 +24,7 @@ const hasLocation = (n: Notification) => n.type === "scan" || n.type === "locati
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -66,21 +69,21 @@ export default function NotificationsPage() {
               <ArrowLeft size={18} className="text-[#1A2332]" />
             </button>
             <div>
-              <h1 className="text-[24px] font-black text-[#1A2332] font-display leading-none">Notifications</h1>
-              <p className="text-[14px] text-[#FF7B35] font-bold font-display mt-1">{unreadCount} unread</p>
+              <h1 className="text-[24px] font-black text-[#1A2332] font-display leading-none">{t("notifs.title")}</h1>
+              <p className="text-[14px] text-[#FF7B35] font-bold font-display mt-1">{unreadCount} {t("notifs.unread")}</p>
             </div>
           </div>
           {unreadCount > 0 && (
             <button type="button" onClick={markAllRead} className="flex items-center gap-1 text-[15px] text-[#4A8FE8] font-bold font-display pt-2">
-              <CheckCheck size={18} /> Mark all read
+              <CheckCheck size={18} /> {t("notifs.markAllRead")}
             </button>
           )}
         </div>
 
         {/* Filter chips */}
         <div className="flex gap-2 mt-4">
-          <button type="button" onClick={() => setFilter("all")} className={`px-5 py-2 rounded-full text-[14px] font-bold font-display ${filter === "all" ? "gradient-brand text-white shadow-cta" : "bg-[#EEF2FB] text-[#6B7A8D]"}`}>All</button>
-          <button type="button" onClick={() => setFilter("unread")} className={`px-5 py-2 rounded-full text-[14px] font-bold font-display ${filter === "unread" ? "gradient-brand text-white shadow-cta" : "bg-[#EEF2FB] text-[#4A8FE8]"}`}>Unread ({unreadCount})</button>
+          <button type="button" onClick={() => setFilter("all")} className={`px-5 py-2 rounded-full text-[14px] font-bold font-display ${filter === "all" ? "gradient-brand text-white shadow-cta" : "bg-[#EEF2FB] text-[#6B7A8D]"}`}>{t("notifs.all")}</button>
+          <button type="button" onClick={() => setFilter("unread")} className={`px-5 py-2 rounded-full text-[14px] font-bold font-display ${filter === "unread" ? "gradient-brand text-white shadow-cta" : "bg-[#EEF2FB] text-[#4A8FE8]"}`}>{t("notifs.unreadFilter")} ({unreadCount})</button>
         </div>
       </header>
 
@@ -88,7 +91,7 @@ export default function NotificationsPage() {
         {shown.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="w-16 h-16 rounded-full bg-[#EEF2F7] flex items-center justify-center"><Bell size={28} className="text-[#9BAABB]" /></div>
-            <p className="text-[14px] font-bold text-[#6B7A8D] font-display">{filter === "unread" ? "No unread notifications" : "No notifications yet"}</p>
+            <p className="text-[14px] font-bold text-[#6B7A8D] font-display">{filter === "unread" ? t("notifs.noneUnread") : t("notifs.noneYet")}</p>
           </div>
         ) : (
           shown.map((n) => {
@@ -114,13 +117,13 @@ export default function NotificationsPage() {
 
                 {/* Body */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[16px] font-extrabold text-[#1A2332] font-display leading-snug">{n.title}</p>
-                  <p className="text-[14px] text-[#6B7A8D] font-body leading-relaxed mt-0.5">{n.body}</p>
+                  <p className="text-[16px] font-extrabold text-[#1A2332] font-display leading-snug">{localizeNotifTitle(n.title, t)}</p>
+                  <p className="text-[14px] text-[#6B7A8D] font-body leading-relaxed mt-0.5">{localizeNotifBody(n.body, t)}</p>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[13px] text-[#9BAABB] font-body">{n.time}</span>
+                    <span className="text-[13px] text-[#9BAABB] font-body">{localizeRelativeTime(n.time, t)}</span>
                     {hasLocation(n) && (
                       <span className="flex items-center gap-1 text-[13px] font-bold font-display text-[#4A8FE8]">
-                        <MapPin size={13} /> Location recorded
+                        <MapPin size={13} /> {t("notifs.locationRecorded")}
                       </span>
                     )}
                   </div>
@@ -133,7 +136,7 @@ export default function NotificationsPage() {
         {/* Clear all */}
         {items.length > 0 && (
           <button type="button" onClick={clearAll} className="mt-2 flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-[#C5CFD9]/60 text-[#9BAABB] font-bold font-display active:scale-95">
-            <Trash2 size={17} /> Clear All Notifications
+            <Trash2 size={17} /> {t("notifs.clearAll")}
           </button>
         )}
       </div>

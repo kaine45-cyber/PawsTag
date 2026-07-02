@@ -11,7 +11,7 @@ export interface PassportData {
   mrz: string;
   identity: {
     fullName: string; species: string; breed: string;
-    dateOfBirth: string; age: string; weight: string;
+    dateOfBirth: string; ageMonths: number | null; weight: string;
     primaryColor: string | null; eyeColor: string | null;
   };
   microchip: {

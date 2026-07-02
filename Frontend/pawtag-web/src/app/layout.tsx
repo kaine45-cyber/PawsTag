@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Nunito, Inter } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
+import { LanguageProvider } from "@/i18n/LanguageContext";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi" className={`${nunito.variable} ${inter.variable} h-full`}>
       <body className="h-full antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

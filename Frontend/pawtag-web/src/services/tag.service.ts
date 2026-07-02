@@ -10,7 +10,7 @@ export interface PublicPet {
   name: string;
   species: string;
   breed: string;
-  age: string;
+  ageMonths: number | null;
   gender: string;
   weight: string;
   color: string;

@@ -11,7 +11,7 @@ public record PublicPetResponse(
         String name,
         String species,
         String breed,
-        String age,
+        Integer ageMonths,
         String gender,
         String weight,
         String color,

@@ -6,24 +6,13 @@ import { ArrowLeft, Camera, Check, ArrowRight, Trash2, Plus } from "lucide-react
 import { ROUTES } from "@/constants/routes";
 import { petService, type EmergencyContactInput } from "@/services/pet.service";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n/LanguageContext";
 
 const inputClass =
   "w-full h-[52px] px-[18px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]";
 
-const PHOTO_TIPS = [
-  "Clear front-facing photo",
-  "Good lighting, no flash",
-  "Recent photo (last 6 months)",
-  "Shows pet's natural color",
-];
-
-const TAG_INCLUDES = [
-  "QR Code for instant scan",
-  "NFC chip programming",
-  "Emergency contact info",
-  "Live pet profile page",
-  "Scan alerts to your phone",
-];
+const PHOTO_TIP_KEYS = ["cw.tip1", "cw.tip2", "cw.tip3", "cw.tip4"];
+const TAG_INCLUDE_KEYS = ["cw.inc1", "cw.inc2", "cw.inc3", "cw.inc4", "cw.inc5"];
 
 /** "2 years, 6 months" → ISO birthDate (xấp xỉ). */
 function ageToBirthDate(text: string): string | undefined {
@@ -41,6 +30,7 @@ interface Contact { name: string; phone: string }
 export default function CreatePetPage() {
   const router = useRouter();
   const { user, refreshPets } = useAuth();
+  const { t } = useI18n();
 
   const [step, setStep] = useState(1);
 
@@ -77,16 +67,16 @@ export default function CreatePetPage() {
   function removeContact(i: number) { setContacts((prev) => prev.filter((_, idx) => idx !== i)); }
 
   function next() {
-    if (step === 2 && !name.trim()) { setError("Pet name is required."); return; }
+    if (step === 2 && !name.trim()) { setError(t("cw.nameRequired")); return; }
     if (step === 3) { submit(); return; }
     setError("");
     setStep((s) => s + 1);
   }
 
   async function submit() {
-    if (!name.trim()) { setError("Pet name is required."); setStep(2); return; }
+    if (!name.trim()) { setError(t("cw.nameRequired")); setStep(2); return; }
     const primary = contacts[0];
-    if (!primary?.phone.trim()) { setError("Primary contact phone is required."); return; }
+    if (!primary?.phone.trim()) { setError(t("cw.phoneRequired")); return; }
     setError("");
     setSaving(true);
     try {
@@ -109,7 +99,7 @@ export default function CreatePetPage() {
       await refreshPets();
       router.push(ROUTES.petTags(pet.id));
     } catch {
-      setError("Could not create pet. Please try again.");
+      setError(t("cw.createFailed"));
     } finally {
       setSaving(false);
     }
@@ -130,8 +120,8 @@ export default function CreatePetPage() {
             <ArrowLeft size={18} className="text-[#1A2332]" />
           </button>
           <div>
-            <h1 className="text-[22px] font-black text-[#1A2332] font-display leading-none">Create Pet Profile</h1>
-            <p className="text-[13px] text-[#9BAABB] font-body mt-1">Step {step} of 3</p>
+            <h1 className="text-[22px] font-black text-[#1A2332] font-display leading-none">{t("cw.title")}</h1>
+            <p className="text-[13px] text-[#9BAABB] font-body mt-1">{t("cw.step").replace("{n}", String(step))}</p>
           </div>
         </div>
       </header>
@@ -145,8 +135,8 @@ export default function CreatePetPage() {
         {/* ── Step 1: Photo ── */}
         {step === 1 && (
           <>
-            <h2 className="text-[26px] font-black text-[#1A2332] font-display">Pet&apos;s Photo 📸</h2>
-            <p className="text-[15px] text-[#6B7A8D] font-body mt-1 mb-6">Add a clear photo of your pet&apos;s face</p>
+            <h2 className="text-[26px] font-black text-[#1A2332] font-display">{t("cw.photoTitle")} 📸</h2>
+            <p className="text-[15px] text-[#6B7A8D] font-body mt-1 mb-6">{t("cw.photoSub")}</p>
 
             <label className="border-2 border-dashed border-[#4A8FE8]/40 rounded-3xl h-64 flex flex-col items-center justify-center gap-3 bg-[#EEF5FF]/30 cursor-pointer active:scale-[0.99] transition-all overflow-hidden">
               {photoPreview ? (
@@ -154,20 +144,20 @@ export default function CreatePetPage() {
               ) : (
                 <>
                   <div className="w-20 h-20 rounded-3xl bg-[#E1EAFB] flex items-center justify-center"><Camera size={36} className="text-[#4A8FE8]" /></div>
-                  <p className="text-[18px] font-bold text-[#4A8FE8] font-display">Tap to upload photo</p>
-                  <p className="text-[14px] text-[#9BAABB] font-body">JPG, PNG up to 10MB</p>
+                  <p className="text-[18px] font-bold text-[#4A8FE8] font-display">{t("cw.tapUpload")}</p>
+                  <p className="text-[14px] text-[#9BAABB] font-body">{t("cw.fileHint")}</p>
                 </>
               )}
               <input type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
             </label>
 
             <div className="mt-6 rounded-2xl bg-[#EEF2FB] p-5">
-              <p className="text-[16px] font-bold text-[#4A8FE8] font-display mb-3">📸 Photo Tips</p>
+              <p className="text-[16px] font-bold text-[#4A8FE8] font-display mb-3">📸 {t("cw.photoTips")}</p>
               <div className="flex flex-col gap-2.5">
-                {PHOTO_TIPS.map((t) => (
-                  <div key={t} className="flex items-center gap-2.5">
+                {PHOTO_TIP_KEYS.map((k) => (
+                  <div key={k} className="flex items-center gap-2.5">
                     <Check size={16} className="text-[#22C55E] shrink-0" strokeWidth={3} />
-                    <span className="text-[15px] text-[#1A2332] font-body">{t}</span>
+                    <span className="text-[15px] text-[#1A2332] font-body">{t(k)}</span>
                   </div>
                 ))}
               </div>
@@ -178,22 +168,22 @@ export default function CreatePetPage() {
         {/* ── Step 2: Basic Info ── */}
         {step === 2 && (
           <>
-            <h2 className="text-[26px] font-black text-[#1A2332] font-display">Basic Info 🐾</h2>
-            <p className="text-[15px] text-[#6B7A8D] font-body mt-1 mb-6">Tell us about your pet</p>
+            <h2 className="text-[26px] font-black text-[#1A2332] font-display">{t("cw.basicTitle")} 🐾</h2>
+            <p className="text-[15px] text-[#6B7A8D] font-body mt-1 mb-6">{t("cw.basicSub")}</p>
 
             <div className="flex flex-col gap-5">
-              <Field label="Pet Name *"><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bobby, Luna, Mochi..." className={inputClass} aria-label="Pet name" /></Field>
-              <Field label="Breed"><input type="text" value={breed} onChange={(e) => setBreed(e.target.value)} placeholder="e.g. Pembroke Welsh Corgi" className={inputClass} aria-label="Breed" /></Field>
-              <Field label="Age"><input type="text" value={age} onChange={(e) => setAge(e.target.value)} placeholder="e.g. 2 years, 6 months" className={inputClass} aria-label="Age" /></Field>
-              <Field label="Gender">
+              <Field label={t("cw.petName")}><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("cw.namePlaceholder")} className={inputClass} aria-label="Pet name" /></Field>
+              <Field label={t("cw.breed")}><input type="text" value={breed} onChange={(e) => setBreed(e.target.value)} placeholder="e.g. Pembroke Welsh Corgi" className={inputClass} aria-label="Breed" /></Field>
+              <Field label={t("cw.age")}><input type="text" value={age} onChange={(e) => setAge(e.target.value)} placeholder="e.g. 2 years, 6 months" className={inputClass} aria-label="Age" /></Field>
+              <Field label={t("cw.gender")}>
                 <div className="grid grid-cols-2 gap-3">
-                  {[{ k: "male", l: "♂ Male" }, { k: "female", l: "♀ Female" }].map(({ k, l }) => (
+                  {[{ k: "male", l: t("cw.male") }, { k: "female", l: t("cw.female") }].map(({ k, l }) => (
                     <button key={k} type="button" onClick={() => setGender(k)} className={`h-[52px] rounded-2xl font-bold text-[15px] font-display transition-all active:scale-95 ${gender === k ? "gradient-brand text-white shadow-cta" : "bg-[#F0F4FA] text-[#6B7A8D] border border-[rgba(74,143,232,0.12)]"}`}>{l}</button>
                   ))}
                 </div>
               </Field>
-              <Field label="Identifying Features">
-                <textarea value={features} onChange={(e) => setFeatures(e.target.value)} rows={4} placeholder="Color, markings, collar, special features..." aria-label="Identifying features" className="w-full px-[18px] py-3 rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB] resize-none" />
+              <Field label={t("cw.features")}>
+                <textarea value={features} onChange={(e) => setFeatures(e.target.value)} rows={4} placeholder={t("cw.featuresPlaceholder")} aria-label="Identifying features" className="w-full px-[18px] py-3 rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB] resize-none" />
               </Field>
             </div>
           </>
@@ -202,15 +192,15 @@ export default function CreatePetPage() {
         {/* ── Step 3: Emergency Contacts ── */}
         {step === 3 && (
           <>
-            <h2 className="text-[26px] font-black text-[#1A2332] font-display">Emergency Contacts 📞</h2>
-            <p className="text-[15px] text-[#6B7A8D] font-body mt-1 mb-6">Who to contact if your pet is found</p>
+            <h2 className="text-[26px] font-black text-[#1A2332] font-display">{t("cw.contactsTitle")} 📞</h2>
+            <p className="text-[15px] text-[#6B7A8D] font-body mt-1 mb-6">{t("cw.contactsSub")}</p>
 
             <div className="flex flex-col gap-4">
               {contacts.map((c, i) => (
                 <div key={i} className="bg-white rounded-2xl shadow-card p-4">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[16px] font-extrabold text-[#1A2332] font-display">
-                      {i === 0 ? "Primary Contact " : "Secondary Contact"}
+                      {i === 0 ? `${t("cw.primary")} ` : t("cw.secondary")}
                       {i === 0 && <span className="text-[#EF4444]">*</span>}
                     </p>
                     {i > 0 && (
@@ -218,23 +208,23 @@ export default function CreatePetPage() {
                     )}
                   </div>
                   <div className="flex flex-col gap-2.5">
-                    <input type="text" value={c.name} onChange={(e) => setContact(i, "name", e.target.value)} placeholder="Full name" aria-label="Contact name" className={inputClass} />
-                    <input type="tel" value={c.phone} onChange={(e) => setContact(i, "phone", e.target.value)} placeholder="Phone number" aria-label="Contact phone" className={inputClass} />
+                    <input type="text" value={c.name} onChange={(e) => setContact(i, "name", e.target.value)} placeholder={t("cw.fullName")} aria-label="Contact name" className={inputClass} />
+                    <input type="tel" value={c.phone} onChange={(e) => setContact(i, "phone", e.target.value)} placeholder={t("cw.phone")} aria-label="Contact phone" className={inputClass} />
                   </div>
                 </div>
               ))}
 
               <button type="button" onClick={addContact} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-[#4A8FE8]/40 text-[#4A8FE8] font-bold font-display active:scale-95">
-                <Plus size={18} /> Add Another Contact
+                <Plus size={18} /> {t("cw.addContact")}
               </button>
 
               <div className="rounded-2xl bg-gradient-to-br from-[#EEF5FF] to-[#EDF7F2] p-5">
-                <p className="text-[16px] font-extrabold text-[#4A8FE8] font-display mb-3">🎉 Almost done! Your tag will include:</p>
+                <p className="text-[16px] font-extrabold text-[#4A8FE8] font-display mb-3">🎉 {t("cw.almostDone")}</p>
                 <div className="flex flex-col gap-2.5">
-                  {TAG_INCLUDES.map((t) => (
-                    <div key={t} className="flex items-center gap-2.5">
+                  {TAG_INCLUDE_KEYS.map((k) => (
+                    <div key={k} className="flex items-center gap-2.5">
                       <Check size={16} className="text-[#22C55E] shrink-0" strokeWidth={3} />
-                      <span className="text-[15px] text-[#1A2332] font-body">{t}</span>
+                      <span className="text-[15px] text-[#1A2332] font-body">{t(k)}</span>
                     </div>
                   ))}
                 </div>
@@ -249,7 +239,7 @@ export default function CreatePetPage() {
         <div className="mt-7 flex gap-3">
           {step === 3 && (
             <button type="button" onClick={() => setStep(2)} className="flex-1 flex items-center justify-center gap-1 py-4 rounded-2xl border-2 border-[#4A8FE8] text-[#4A8FE8] font-bold text-[16px] font-display active:scale-95">
-              ← Back
+              ← {t("cw.back")}
             </button>
           )}
           <button
@@ -259,11 +249,11 @@ export default function CreatePetPage() {
             className={`${step === 3 ? "flex-1" : "w-full"} flex items-center justify-center gap-2 py-4 rounded-2xl gradient-brand text-white font-extrabold text-[17px] font-display shadow-cta transition-all active:scale-95 disabled:opacity-70`}
           >
             {saving ? (
-              <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /><span>Creating...</span></>
+              <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /><span>{t("cw.creating")}</span></>
             ) : step === 3 ? (
-              <>🎉 Create My Tag!</>
+              <>🎉 {t("cw.createTag")}</>
             ) : (
-              <>Continue <ArrowRight size={20} /></>
+              <>{t("cw.continue")} <ArrowRight size={20} /></>
             )}
           </button>
         </div>

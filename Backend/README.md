@@ -26,6 +26,18 @@ Create a Render Web Service from this repo with:
 
 Render provides `PORT`; `application.yml` reads it automatically.
 
+If you choose Render's Docker runtime instead:
+
+- Option A, repo root as build context:
+  - Root Directory: leave empty
+  - Dockerfile Path: `Dockerfile`
+- Option B, backend folder as build context:
+  - Root Directory: `Backend`
+  - Dockerfile Path: `Dockerfile`
+
+Do not set Java build/start commands when using Docker; Render uses the
+Dockerfile.
+
 Required environment variables:
 
 ```env

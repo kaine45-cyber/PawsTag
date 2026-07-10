@@ -2,6 +2,7 @@ package vn.pawstag.service.impl;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -29,7 +30,7 @@ public class ScanGeocodeUpdater {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onScanRecorded(ScanRecordedEvent event) {
         if (event.lat() == null || event.lng() == null) return;
         String locationName = geocodingService.reverse(event.lat(), event.lng());

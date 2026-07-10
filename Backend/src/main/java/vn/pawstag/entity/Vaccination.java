@@ -33,6 +33,10 @@ public class Vaccination {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
+    /** Ngày đã gửi nhắc gần nhất (job nhắc lịch tiêm) — tránh nhắc trùng. */
+    @Column(name = "last_reminded_on")
+    private LocalDate lastRemindedOn;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

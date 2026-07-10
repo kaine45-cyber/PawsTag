@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import {
   AlertTriangle, MapPin, Share2, MessageCircle, ArrowLeft,
-  Bell, Megaphone, Repeat, Eye, Check, Printer,
+  Bell, Megaphone, Eye, Check, Printer,
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import dynamic from "next/dynamic";
@@ -16,7 +16,6 @@ import { scanService } from "@/services/scan.service";
 import { formatAge } from "@/utils/formatter";
 import { exportElementToA4Pdf } from "@/lib/pdf";
 import { useI18n } from "@/i18n/LanguageContext";
-import { localizeRelativeTime } from "@/i18n/localizeNotification";
 
 const ScanMap = dynamic(() => import("@/components/map/ScanMap"), {
   ssr: false,
@@ -24,14 +23,6 @@ const ScanMap = dynamic(() => import("@/components/map/ScanMap"), {
 });
 
 const FALLBACK = "/images/corgi.jpg";
-
-/** Số liệu cộng đồng demo, ổn định theo pet. */
-function demoStats(seed: string) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
-  h = Math.abs(h);
-  return { notified: 200 + (h % 800), sharing: 5 + (h % 25), reports: h % 6 };
-}
 
 export default function LostModePage({ params }: { params: Promise<{ petId: string }> }) {
   const { petId } = use(params);
@@ -48,8 +39,19 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
   const [makingPoster, setMakingPoster] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setOrigin(window.location.origin); }, []);
-  useEffect(() => { if (pet) setActive(pet.status === "lost"); }, [pet]);
+  useEffect(() => {
+    async function readOrigin() {
+      setOrigin(window.location.origin);
+    }
+    readOrigin();
+  }, []);
+
+  useEffect(() => {
+    async function syncActive() {
+      if (pet) setActive(pet.status === "lost");
+    }
+    syncActive();
+  }, [pet]);
   useEffect(() => {
     if (!pet) return;
     scanService.getHistory(pet.id).then((s) => { if (s[0]) setLastScan({ location: s[0].location, time: s[0].timeAgo, lat: s[0].lat, lng: s[0].lng }); }).catch(() => {});
@@ -66,7 +68,6 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
   }
 
   const tagUrl = `${origin || "https://pawstag.vn"}/t/${pet.tagCode}`;
-  const stats = demoStats(pet.id);
 
   async function setLost(next: boolean) {
     setActive(next);
@@ -169,10 +170,9 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
           </div>
 
           {active && (
-            <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-[#F0F4FA]">
-              <Stat icon={<Megaphone size={20} className="text-[#EF4444]" />} value={stats.notified} label={t("lost.notified")} />
-              <Stat icon={<Repeat size={20} className="text-[#4A8FE8]" />} value={stats.sharing} label={t("lost.sharing")} />
-              <Stat icon={<Eye size={20} className="text-[#8B5CF6]" />} value={stats.reports} label={t("lost.reports")} />
+            <div className="grid grid-cols-2 gap-3 mt-5 pt-5 border-t border-[#F0F4FA]">
+              <Stat icon={<Eye size={20} className="text-[#4A8FE8]" />} value={pet.totalScans} label={t("petd.totalScans")} />
+              <Stat icon={<Megaphone size={20} className="text-[#EF4444]" />} value={pet.scansToday} label={t("dash.scansToday")} />
             </div>
           )}
         </div>
@@ -196,7 +196,7 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
                 <div className="relative w-14 h-14 rounded-full bg-white shadow-card flex items-center justify-center">
                   <MapPin size={26} className="text-[#9BAABB]" />
                 </div>
-                <p className="relative text-[13px] text-[#9BAABB] font-body">{t("lost.emptyHint")}</p>
+                <p className="relative text-[13px] text-[#9BAABB] font-body">{lastScan ? t("lost.noGpsHint") : t("lost.emptyHint")}</p>
               </div>
             )}
           </div>
@@ -222,7 +222,7 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
         <div>
           <p className="text-[18px] font-black text-[#1A2332] font-display mb-3">{t("lost.shareAlert")} 📣</p>
           <div className="grid grid-cols-2 gap-3">
-            <a href={`https://zalo.me/share?text=LOST PET: ${pet.name}! ${tagUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#EEF2FB] text-[#4A8FE8] font-bold font-display active:scale-95"><Share2 size={18} /> {t("lost.shareZalo")}</a>
+            <a href={`https://zalo.me/share?text=${encodeURIComponent(t("lost.shareText").replace("{name}", pet.name) + " " + tagUrl)}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#EEF2FB] text-[#4A8FE8] font-bold font-display active:scale-95"><Share2 size={18} /> {t("lost.shareZalo")}</a>
             <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(tagUrl)}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#EEF2FB] text-[#4A8FE8] font-bold font-display active:scale-95"><MessageCircle size={18} /> {t("lost.shareFacebook")}</a>
             <button type="button" className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#FFF7F0] text-[#FF7B35] font-bold font-display active:scale-95"><Bell size={18} /> {t("lost.neighborhood")}</button>
             <button type="button" onClick={copyLink} className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-[#EDF7F2] text-[#22C55E] font-bold font-display active:scale-95">{copied ? <Check size={18} /> : <MapPin size={18} />} {copied ? t("lost.copied") : t("lost.copyLink")}</button>
@@ -260,9 +260,9 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
       <div ref={posterRef} aria-hidden className="fixed top-0 -left-[10000px] w-[595px] bg-white font-display">
         {/* Header đỏ */}
         <div className="bg-[#EF4444] px-10 pt-8 pb-7 text-center">
-          <p className="text-white font-extrabold tracking-[0.3em] text-[18px]">⚠ HELP US FIND ⚠</p>
-          <p className="text-white font-black text-[68px] leading-none mt-1">LOST PET</p>
-          <p className="text-white text-[19px] mt-3 opacity-95">Please help bring {pet.name} home 🙏</p>
+          <p className="text-white font-extrabold tracking-[0.3em] text-[18px]">{t("poster.helpUsFind")}</p>
+          <p className="text-white font-black text-[68px] leading-none mt-1">{t("poster.lostPet")}</p>
+          <p className="text-white text-[19px] mt-3 opacity-95">{t("poster.pleaseHelp").replace("{name}", pet.name)}</p>
         </div>
 
         {/* Ảnh */}
@@ -283,7 +283,7 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
           {subtitle && <p className="text-[#6B7A8D] text-[20px] mt-2">{subtitle}</p>}
           {reward && (
             <div className="inline-block mt-4 bg-[#FFF7E6] border-[3px] border-[#FF7B35] rounded-2xl px-8 py-2.5">
-              <span className="text-[#FF7B35] font-black text-[26px]">💰 REWARD: {reward}</span>
+              <span className="text-[#FF7B35] font-black text-[26px]">💰 {t("poster.reward")}: {reward}</span>
             </div>
           )}
         </div>
@@ -291,10 +291,10 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
         {/* Chi tiết */}
         <div className="px-10 pt-6 grid grid-cols-2 gap-3">
           {[
-            { label: "Color", value: pet.color || "—" },
-            { label: "Last seen", value: lastScan?.location ?? "Unknown" },
-            { label: "Microchip", value: pet.medical.microchipId ? `···${pet.medical.microchipId.slice(-6)}` : "—" },
-            { label: "Seen", value: lastScan?.time ?? "—" },
+            { label: t("poster.color"), value: pet.color || "—" },
+            { label: t("poster.lastSeen"), value: lastScan?.location ?? t("common.unknown") },
+            { label: t("poster.microchip"), value: pet.medical.microchipId ? `···${pet.medical.microchipId.slice(-6)}` : "—" },
+            { label: t("poster.seen"), value: lastScan?.time ?? "—" },
           ].map(({ label, value }) => (
             <div key={label} className="bg-[#F7F9FC] rounded-2xl px-5 py-3">
               <p className="text-[#9BAABB] text-[13px] uppercase tracking-wide">{label}</p>
@@ -307,7 +307,7 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
         {(pet.identificationNotes || pet.lostMessage || pet.emergencyMessage) && (
           <div className="px-10 pt-4">
             <div className="bg-[#FFF7F0] rounded-2xl px-6 py-4">
-              <p className="text-[#FF7B35] font-bold text-[14px] uppercase tracking-wide">Distinguishing features / note</p>
+              <p className="text-[#FF7B35] font-bold text-[14px] uppercase tracking-wide">{t("poster.notes")}</p>
               <p className="text-[#1A2332] text-[18px] mt-1.5 leading-relaxed">
                 {pet.identificationNotes || pet.lostMessage || pet.emergencyMessage}
               </p>
@@ -322,16 +322,16 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
               <QRCodeCanvas value={tagUrl} size={130} level="M" />
             </div>
             <div className="flex-1">
-              <p className="text-white/70 text-[15px]">If found, please contact the owner</p>
+              <p className="text-white/70 text-[15px]">{t("poster.contactOwner")}</p>
               <p className="text-white font-black text-[38px] leading-tight mt-1">📞 {pet.phone || "—"}</p>
-              <p className="text-white/70 text-[15px] mt-2">or scan the QR to view {pet.name}&apos;s profile &amp; report location</p>
+              <p className="text-white/70 text-[15px] mt-2">{t("poster.scanQrHint").replace("{name}", pet.name)}</p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="px-10 py-5 text-center">
-          <p className="text-[#9BAABB] text-[14px]">🐾 Protected by PawsTag &nbsp;•&nbsp; {(origin || "pawstag.vn").replace(/^https?:\/\//, "")}/t/{pet.tagCode}</p>
+          <p className="text-[#9BAABB] text-[14px]">🐾 {t("poster.protectedBy")} &nbsp;•&nbsp; {(origin || "pawstag.vn").replace(/^https?:\/\//, "")}/t/{pet.tagCode}</p>
         </div>
       </div>
     </div>

@@ -17,7 +17,8 @@ public record DashboardResponse(
             long activeTags,
             long scansToday,
             long totalScans,
-            long lostModeActive
+            long lostModeActive,
+            long unreadNotifications
     ) {}
 
     public record RecentScan(

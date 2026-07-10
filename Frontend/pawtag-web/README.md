@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PawTag Web
 
-## Getting Started
+Next.js frontend for PawTag.
 
-First, run the development server:
+## Local development
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+By default the app calls `/api`, and `next.config.ts` proxies those requests to
+`API_PROXY_TARGET` (`http://localhost:8082` locally).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment variables
 
-## Learn More
+```env
+NEXT_PUBLIC_API_URL=/api
+API_PROXY_TARGET=http://localhost:8082
+NEXT_PUBLIC_GOONG_MAPTILES_KEY=
+```
 
-To learn more about Next.js, take a look at the following resources:
+For Vercel production, keep `NEXT_PUBLIC_API_URL=/api` and set:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+API_PROXY_TARGET=https://your-render-backend.onrender.com
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Use the backend origin only, without the trailing `/api`; `next.config.ts` adds
+`/api/:path*` automatically.
 
-## Deploy on Vercel
+## Vercel settings
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Root Directory: `Frontend/pawtag-web`
+- Framework Preset: `Next.js`
+- Install Command: `npm ci`
+- Build Command: `npm run build`
+- Output Directory: leave empty/default
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Checks
+
+```bash
+npm run lint
+npm exec tsc -- --noEmit
+npm run build
+```

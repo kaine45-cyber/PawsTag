@@ -1,6 +1,8 @@
 package vn.pawstag.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import vn.pawstag.entity.Tag;
 import vn.pawstag.enums.TagStatus;
 
@@ -14,6 +16,16 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     Optional<Tag> findByPublicCode(String publicCode);
 
     Optional<Tag> findFirstByPetIdAndStatus(Long petId, TagStatus status);
+
+    /** Projection dùng cho query gộp theo nhiều pet (tránh N+1 khi liệt kê pet). */
+    interface PetTagCode {
+        Long getPetId();
+        String getPublicCode();
+    }
+
+    @Query("SELECT t.pet.id AS petId, t.publicCode AS publicCode FROM Tag t " +
+           "WHERE t.pet.id IN :petIds AND t.status = :status")
+    List<PetTagCode> findActiveCodesByPetIds(@Param("petIds") List<Long> petIds, @Param("status") TagStatus status);
 
     List<Tag> findByPetId(Long petId);
 

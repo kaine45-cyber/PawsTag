@@ -35,7 +35,8 @@ export default function HistoryPage() {
 
   const filtered = active === "All" ? scans : scans.filter((s) => s.petName === active);
 
-  const uniqueLocs = new Set(scans.map((s) => s.location.split(",")[0])).size;
+  // Chỉ đếm địa điểm có tên thật (quét không GPS → "Unknown location" thì bỏ qua)
+  const uniqueLocs = new Set(scans.filter((s) => s.location !== "Unknown location").map((s) => s.location.split(",")[0])).size;
   const petCount = new Set(scans.map((s) => s.petName)).size;
 
   if (loading) {

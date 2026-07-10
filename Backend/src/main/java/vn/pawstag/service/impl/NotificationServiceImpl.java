@@ -29,6 +29,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void create(Owner owner, Pet pet, NotificationType type, String title, String message) {
+        // Tôn trọng tùy chọn nhận thông báo của owner (Profile → Notifications).
+        if (owner != null && !allowedByPrefs(owner, type)) {
+            return;
+        }
         Notification n = Notification.builder()
                 .owner(owner)
                 .pet(pet)
@@ -38,6 +42,16 @@ public class NotificationServiceImpl implements NotificationService {
                 .read(false)
                 .build();
         notificationRepository.save(n);
+    }
+
+    /** Owner có bật nhận loại thông báo này không (theo 3 công tắc scans / lost / updates). */
+    private boolean allowedByPrefs(Owner owner, NotificationType type) {
+        return switch (type) {
+            case SCAN, LOCATION -> owner.isNotifScans();   // "Cảnh báo quét"
+            case ALERT          -> owner.isNotifLost();     // "Cảnh báo đi lạc & báo tìm thấy"
+            case SYSTEM         -> owner.isNotifUpdates();  // "Cập nhật sản phẩm"
+            case MEDICAL        -> true;                    // nhắc y tế: luôn gửi
+        };
     }
 
     @Override

@@ -48,13 +48,26 @@ export default function PassportPage() {
   }
 
   useEffect(() => {
-    if (!pet) { setLoading(false); return; }
     let on = true;
-    setLoading(true);
-    passportService.get(pet.id)
-      .then((d) => { if (on) setData(d); })
-      .catch(() => { if (on) setData(null); })
-      .finally(() => { if (on) setLoading(false); });
+
+    async function loadPassport() {
+      if (!pet) {
+        if (on) setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const d = await passportService.get(pet.id);
+        if (on) setData(d);
+      } catch {
+        if (on) setData(null);
+      } finally {
+        if (on) setLoading(false);
+      }
+    }
+
+    loadPassport();
     return () => { on = false; };
   }, [pet]);
 
@@ -258,9 +271,9 @@ function HealthTab({ data, petId, onUpdate, onSave, onShare, exporting }: { data
   return (
     <>
       <div className="grid grid-cols-3 gap-3">
-        <StatBox value={`${data.health.vaccinesValid}/${data.health.vaccinesTotal}`} label={t("pp.vaccines")} sub={t("pp.upToDate")} color="text-[#22C55E]" />
+        <StatBox value={`${data.health.vaccinesValid}/${data.health.vaccinesTotal}`} label={t("pp.vaccines")} sub={data.health.vaccinesTotal > 0 ? t("pp.upToDate") : t("pp.noneRecorded")} color={data.health.vaccinesTotal > 0 ? "text-[#22C55E]" : "text-[#9BAABB]"} />
         <StatBox value={String(data.health.vetVisitsThisYear)} label={t("pp.vetVisitsStat")} sub={t("pp.thisYear")} color="text-[#4A8FE8]" />
-        <StatBox value={`${data.health.healthScore}%`} label={t("pp.healthScore")} sub={data.health.healthScore >= 90 ? t("pp.excellent") : data.health.healthScore >= 75 ? t("pp.good") : t("pp.fair")} color="text-[#FF7B35]" />
+        <StatBox value={data.vaccinations.length > 0 || data.vetVisits.length > 0 ? `${data.health.healthScore}%` : "—"} label={t("pp.healthScore")} sub={data.vaccinations.length === 0 && data.vetVisits.length === 0 ? t("pp.noHealthData") : data.health.healthScore >= 90 ? t("pp.excellent") : data.health.healthScore >= 75 ? t("pp.good") : t("pp.fair")} color="text-[#FF7B35]" />
       </div>
 
       <Card>

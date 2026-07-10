@@ -25,11 +25,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   // Đọc lựa chọn đã lưu sau khi mount (tránh lệch hydration)
   useEffect(() => {
-    const saved = localStorage.getItem(LANG_KEY);
-    if (saved === "en" || saved === "vi") {
-      setLangState(saved);
-      document.documentElement.lang = saved;
+    async function loadSavedLanguage() {
+      const saved = localStorage.getItem(LANG_KEY);
+      if (saved === "en" || saved === "vi") {
+        setLangState(saved);
+        document.documentElement.lang = saved;
+      }
     }
+    loadSavedLanguage();
   }, []);
 
   const setLang = useCallback((l: Lang) => {

@@ -194,7 +194,7 @@ export default function ProfilePage() {
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-body ${
                     pet.status === "lost" ? "bg-[#FEF2F2] text-[#EF4444]" : "bg-[#EDF7F2] text-[#22C55E]"
                   }`}>
-                    {pet.status === "lost" ? "LOST" : "Safe"}
+                    {pet.status === "lost" ? t("common.lost") : t("common.safe")}
                   </span>
                 </div>
               ))}
@@ -297,16 +297,17 @@ function PasswordModal({ onClose }: { onClose: () => void }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function submit() {
-    if (next.length < 8) { setMsg({ ok: false, text: "New password must be at least 8 characters." }); return; }
+    if (next.length < 8) { setMsg({ ok: false, text: t("modal.pwMin") }); return; }
     setBusy(true); setMsg(null);
     try {
       await ownerService.changePassword(cur, next);
-      setMsg({ ok: true, text: "Password changed successfully!" });
+      setMsg({ ok: true, text: t("modal.pwChanged") });
       setCur(""); setNext("");
       setTimeout(onClose, 1200);
     } catch (e) {
       const m = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setMsg({ ok: false, text: m || "Could not change password." });
+      // Backend trả message tiếng Anh cố định → map sang i18n
+      setMsg({ ok: false, text: m === "Current password is incorrect" ? t("modal.pwWrongCurrent") : t("modal.pwFailed") });
     } finally { setBusy(false); }
   }
 

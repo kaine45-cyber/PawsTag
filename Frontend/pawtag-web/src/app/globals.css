@@ -58,6 +58,11 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  --font-nunito: "Nunito", "Segoe UI", Arial, sans-serif;
+  --font-inter: "Inter", "Segoe UI", Arial, sans-serif;
+}
+
 /* Hide scrollbar on mobile app shell */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

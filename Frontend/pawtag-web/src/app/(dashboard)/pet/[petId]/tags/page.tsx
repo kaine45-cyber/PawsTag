@@ -26,7 +26,12 @@ export default function PetTagsPage({ params }: { params: Promise<{ petId: strin
   const [activateMsg, setActivateMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [activating, setActivating] = useState(false);
 
-  useEffect(() => { setOrigin(window.location.origin); }, []);
+  useEffect(() => {
+    async function readOrigin() {
+      setOrigin(window.location.origin);
+    }
+    readOrigin();
+  }, []);
 
   async function activateTag(e: React.FormEvent) {
     e.preventDefault();
@@ -35,10 +40,10 @@ export default function PetTagsPage({ params }: { params: Promise<{ petId: strin
     setActivating(true); setActivateMsg(null);
     try {
       await tagService.activate(code, petId);
-      setActivateMsg({ ok: true, text: `Tag ${code} activated for ${pet?.name}!` });
+      setActivateMsg({ ok: true, text: t("tags.activateSuccess").replace("{code}", code).replace("{name}", pet?.name ?? "") });
       setActivateCode("");
     } catch {
-      setActivateMsg({ ok: false, text: "Could not activate. Code may be invalid or already used." });
+      setActivateMsg({ ok: false, text: t("tags.activateError") });
     } finally { setActivating(false); }
   }
 
@@ -201,7 +206,7 @@ export default function PetTagsPage({ params }: { params: Promise<{ petId: strin
             <label className="block text-[12px] font-semibold text-[#1A2332] font-body mb-1">{t("tags.nfcLink")}</label>
             <div className="flex items-center gap-2 bg-[#F0F4FA] rounded-2xl px-4 py-3">
               <p className="flex-1 text-[12px] text-[#6B7A8D] font-body truncate">
-                https://pawstag.vn/n/{pet.tagCode}
+                {origin || "https://pawstag.vn"}/n/{pet.tagCode}
               </p>
               <button
                 type="button"
@@ -231,7 +236,7 @@ export default function PetTagsPage({ params }: { params: Promise<{ petId: strin
             type="text"
             value={activateCode}
             onChange={(e) => setActivateCode(e.target.value)}
-            placeholder="e.g. A8K92X"
+            placeholder={t("tags.codePlaceholder")}
             aria-label="Tag code"
             className="flex-1 h-[46px] px-4 rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.15)] text-[14px] text-[#1A2332] font-mono uppercase outline-none focus:border-[#4A8FE8] focus:bg-white"
           />

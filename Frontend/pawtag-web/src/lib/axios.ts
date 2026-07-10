@@ -1,14 +1,15 @@
-// Axios instance configured for the Spring Boot backend.
-// Base URL từ NEXT_PUBLIC_API_URL (.env.local) — mặc định http://localhost:8080/api
 import axios from "axios";
 
+// Default to same-origin /api so local and Vercel both use the Next.js proxy.
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api",
+  baseURL: apiBaseUrl,
   timeout: 10_000,
   headers: { "Content-Type": "application/json" },
 });
 
-// Gắn JWT vào mọi request nếu có
+// Attach JWT to every browser request when available.
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("pawtag_token");
@@ -17,7 +18,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Token hỏng/hết hạn → dọn để buộc đăng nhập lại
+// Clear invalid/expired token so the app can force a fresh login.
 api.interceptors.response.use(
   (res) => res,
   (error) => {

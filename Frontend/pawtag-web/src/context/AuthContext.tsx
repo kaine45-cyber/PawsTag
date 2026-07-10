@@ -32,23 +32,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Rehydrate session từ JWT
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-    (async () => {
+    let active = true;
+
+    async function rehydrate() {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        if (active) setIsLoading(false);
+        return;
+      }
       try {
         const me = await authService.me();
+        if (!active) return;
         setUser(me);
         setIsLoggedIn(true);
         await loadPets();
       } catch {
         localStorage.removeItem(TOKEN_KEY);
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
-    })();
+    }
+
+    rehydrate();
+    return () => { active = false; };
   }, [loadPets]);
 
   const login = useCallback(async (email: string, password: string) => {

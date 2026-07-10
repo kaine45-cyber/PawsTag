@@ -37,12 +37,13 @@ export default function DashboardPage() {
   const scansToday = dash?.stats.scansToday ?? 0;
   const totalPets  = dash?.stats.totalPets ?? pets.length;
   const lostActive = dash?.stats.lostModeActive ?? 0;
+  const unread     = dash?.stats.unreadNotifications ?? 0;
 
   const quickActions = [
     { href: firstPetId ? ROUTES.petTags(firstPetId) : ROUTES.petList, icon: Tag,           title: t("qa.manageTags"),  sub: t("qa.manageTags.sub"),  iconCls: "text-[#4A8FE8]", bgCls: "bg-[#EEF5FF]" },
     { href: firstPetId ? ROUTES.petLostMode(firstPetId) : ROUTES.petList, icon: AlertTriangle, title: t("qa.lostMode"), sub: t("qa.lostMode.sub"),    iconCls: "text-[#FF7B35]", bgCls: "bg-[#FFF7F0]" },
     { href: ROUTES.scanHistory, icon: History,  title: t("qa.scanHistory"), sub: t("qa.scanHistory.sub"), iconCls: "text-[#22C55E]", bgCls: "bg-[#EDF7F2]" },
-    { href: ROUTES.profile,     icon: Settings, title: t("qa.petSettings"), sub: t("qa.petSettings.sub"), iconCls: "text-[#8B5CF6]", bgCls: "bg-[#F3F0FF]" },
+    { href: firstPetId ? ROUTES.petEdit(firstPetId) : ROUTES.petList, icon: Settings, title: t("qa.petSettings"), sub: t("qa.petSettings.sub"), iconCls: "text-[#8B5CF6]", bgCls: "bg-[#F3F0FF]" },
   ];
 
   const recent = dash?.recentScans ?? [];
@@ -67,9 +68,13 @@ export default function DashboardPage() {
               <p className="text-white font-black text-[19px] font-display">{user?.name ?? t("dash.owner")}</p>
             </div>
           </div>
-          <Link href="/notifications" className="relative w-11 h-11 rounded-full bg-white/20 flex items-center justify-center">
+          <Link href="/notifications" aria-label={t("nav.alerts")} className="relative w-11 h-11 rounded-full bg-white/20 flex items-center justify-center">
             <Bell size={20} color="#fff" />
-            <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-[#EF4444] border border-white" />
+            {unread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#EF4444] border border-white flex items-center justify-center text-white text-[10px] font-bold font-display leading-none">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
           </Link>
         </div>
 
@@ -123,7 +128,7 @@ export default function DashboardPage() {
                     />
                     <span className={`absolute top-2 right-2 flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full font-display bg-white/95 ${pet.status === "lost" ? "text-[#EF4444]" : "text-[#22C55E]"}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${pet.status === "lost" ? "bg-[#EF4444]" : "bg-[#22C55E]"}`} />
-                      {pet.status === "lost" ? "Lost" : "Safe"}
+                      {pet.status === "lost" ? t("common.lost") : t("common.safe")}
                     </span>
                   </div>
                   <div className="p-3">

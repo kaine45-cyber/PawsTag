@@ -56,8 +56,7 @@ public class PetServiceImpl implements PetService {
     @Transactional(readOnly = true)
     public List<PetResponse> list(String ownerEmail) {
         Owner owner = requireOwner(ownerEmail);
-        return petRepository.findByOwnerIdOrderByCreatedAtDesc(owner.getId())
-                .stream().map(petMapper::toResponse).toList();
+        return petMapper.toResponseBatch(petRepository.findByOwnerIdOrderByCreatedAtDesc(owner.getId()));
     }
 
     @Override

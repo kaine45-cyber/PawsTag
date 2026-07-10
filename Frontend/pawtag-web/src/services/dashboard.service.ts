@@ -8,6 +8,7 @@ export interface DashboardData {
     scansToday: number;
     totalScans: number;
     lostModeActive: number;
+    unreadNotifications: number;
   };
   pets: Pet[];
   recentScans: {

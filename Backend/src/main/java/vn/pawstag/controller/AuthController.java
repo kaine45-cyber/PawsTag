@@ -6,8 +6,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import vn.pawstag.dto.request.ForgotPasswordRequest;
 import vn.pawstag.dto.request.LoginRequest;
 import vn.pawstag.dto.request.RegisterRequest;
+import vn.pawstag.dto.request.ResetPasswordRequest;
 import vn.pawstag.dto.response.ApiResponse;
 import vn.pawstag.dto.response.AuthResponse;
 import vn.pawstag.service.AuthService;
@@ -34,6 +36,20 @@ public class AuthController {
     @Operation(summary = "Đăng nhập bằng email + password → JWT")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Gửi mã OTP đặt lại mật khẩu về email")
+    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ApiResponse.ok(null, "If this email is registered, a reset code has been sent.");
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Xác nhận mã OTP + đặt mật khẩu mới")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ApiResponse.ok(null, "Password reset successfully");
     }
 
     @PostMapping("/logout")

@@ -15,6 +15,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     Optional<Notification> findByIdAndOwnerId(Long id, Long ownerId);
 
+    long countByOwnerIdAndReadFalse(Long ownerId);
+
     @Modifying
     @Query("update Notification n set n.read = true where n.owner.id = :ownerId and n.read = false")
     int markAllRead(@Param("ownerId") Long ownerId);

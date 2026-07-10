@@ -1,55 +1,80 @@
 server:
-  port: 8080
+  port: ${PORT:8082}
   servlet:
-    context-path: /api          # khớp axios baseURL .../api ở frontend
+    context-path: /api
 
 spring:
   application:
     name: pawstag-backend
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: ${MAX_FILE_SIZE:5MB}
+      max-request-size: ${MAX_REQUEST_SIZE:6MB}
   datasource:
-    url: jdbc:postgresql://localhost:5433/pawstag
-    username: pawstag
-    password: pawstag
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5443/pawstag}
+    username: ${SPRING_DATASOURCE_USERNAME:pawstag}
+    password: ${SPRING_DATASOURCE_PASSWORD:pawstag}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:5}
+      minimum-idle: ${DB_POOL_MIN_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
   jpa:
     hibernate:
-      ddl-auto: validate        # Flyway quản schema; JPA chỉ validate
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
     baseline-on-migrate: true
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
-# OpenAPI / Swagger UI  →  http://localhost:8080/api/swagger-ui.html
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
 app:
   login:
-    max-attempts: 5             # sai quá số lần này → khóa
-    lock-minutes: 5             # thời gian khóa (phút)
+    max-attempts: ${LOGIN_MAX_ATTEMPTS:5}
+    lock-minutes: ${LOGIN_LOCK_MINUTES:5}
   jwt:
     secret: ${JWT_SECRET:dev-secret-change-me-in-prod-min-32-bytes-long-string}
-    expiration-ms: 86400000     # 24h
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
   upload:
-    dir: ${UPLOAD_DIR:uploads}                       # thư mục lưu file trên đĩa
-    base-url: ${UPLOAD_BASE_URL:http://localhost:8080/api}  # tiền tố URL công khai
+    dir: ${UPLOAD_DIR:uploads}
+    base-url: ${UPLOAD_BASE_URL:http://localhost:${PORT:8082}/api}
   geocoding:
-    enabled: ${GEOCODING_ENABLED:true}               # reverse-geocode khi scan
-    url: ${GEOCODING_URL:https://nominatim.openstreetmap.org}
+    enabled: ${GEOCODING_ENABLED:true}
+    url: ${NOMINATIM_URL:https://nominatim.openstreetmap.org}
+    goong-url: ${GOONG_API_URL:https://rsapi.goong.io}
+    goong-api-key: ${GOONG_API_KEY:}
   ratelimit:
-    per-minute: ${RATE_LIMIT_PER_MINUTE:100}         # giới hạn req/phút/IP cho endpoint công khai
+    per-minute: ${RATE_LIMIT_PER_MINUTE:100}
+  otp:
+    expiry-minutes: ${OTP_EXPIRY_MINUTES:10}
+    max-attempts: ${OTP_MAX_ATTEMPTS:5}
+  mail:
+    from: ${MAIL_FROM:PawsTag <no-reply@pawstag.vn>}
 
 logging:
   level:
-    org.flywaydb: INFO
-    vn.pawstag: DEBUG
+    org.flywaydb: ${FLYWAY_LOG_LEVEL:INFO}
+    vn.pawstag: ${APP_LOG_LEVEL:INFO}

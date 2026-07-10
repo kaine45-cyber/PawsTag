@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Tag, Scan, Clock, Bell } from "lucide-react";
+import { Home, Tag, Scan, Clock, User } from "lucide-react";
 import { useI18n } from "@/i18n/LanguageContext";
 
 const tabs = [
   { href: "/dashboard",     icon: Home,  key: "nav.home"    },
   { href: "/pet",           icon: Tag,   key: "nav.tags"    },
   { href: "/scan/history",  icon: Clock, key: "nav.history" },
-  { href: "/notifications", icon: Bell,  key: "nav.alerts"  },
+  { href: "/profile",       icon: User,  key: "nav.profile" },
 ];
 
 export default function BottomNav() {

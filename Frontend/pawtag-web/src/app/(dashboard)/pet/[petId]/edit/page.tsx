@@ -50,7 +50,7 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
       setContacts((p.emergencyContacts ?? []).map((c) => ({ name: c.name ?? "", phone: c.phone ?? "" })));
     }).catch(() => setError(t("ed.loadFailed"))).finally(() => { if (on) setLoading(false); });
     return () => { on = false; };
-  }, [petId]);
+  }, [petId, t]);
 
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }));
 

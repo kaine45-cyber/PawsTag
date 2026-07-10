@@ -10,6 +10,7 @@ import vn.pawstag.exception.ResourceNotFoundException;
 import vn.pawstag.mapper.PetMapper;
 import vn.pawstag.entity.ScanLog;
 import vn.pawstag.enums.TagStatus;
+import vn.pawstag.repository.NotificationRepository;
 import vn.pawstag.repository.OwnerRepository;
 import vn.pawstag.repository.PetRepository;
 import vn.pawstag.repository.ScanLogRepository;
@@ -28,17 +29,20 @@ public class DashboardServiceImpl implements DashboardService {
     private final OwnerRepository ownerRepository;
     private final TagRepository tagRepository;
     private final ScanLogRepository scanLogRepository;
+    private final NotificationRepository notificationRepository;
     private final PetMapper petMapper;
 
     public DashboardServiceImpl(PetRepository petRepository,
                                 OwnerRepository ownerRepository,
                                 TagRepository tagRepository,
                                 ScanLogRepository scanLogRepository,
+                                NotificationRepository notificationRepository,
                                 PetMapper petMapper) {
         this.petRepository = petRepository;
         this.ownerRepository = ownerRepository;
         this.tagRepository = tagRepository;
         this.scanLogRepository = scanLogRepository;
+        this.notificationRepository = notificationRepository;
         this.petMapper = petMapper;
     }
 
@@ -49,7 +53,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
 
         List<Pet> pets = petRepository.findByOwnerIdOrderByCreatedAtDesc(owner.getId());
-        List<PetResponse> petDtos = pets.stream().map(petMapper::toResponse).toList();
+        List<PetResponse> petDtos = petMapper.toResponseBatch(pets);
 
         long totalPets = pets.size();
         long lostActive = pets.stream().filter(Pet::isLost).count();
@@ -58,13 +62,14 @@ public class DashboardServiceImpl implements DashboardService {
         Instant startOfToday = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant();
         long scansToday = scanLogRepository.countByTag_Pet_Owner_IdAndScannedAtAfter(owner.getId(), startOfToday);
         long totalScans = scanLogRepository.countByTag_Pet_Owner_Id(owner.getId());
+        long unread = notificationRepository.countByOwnerIdAndReadFalse(owner.getId());
 
         List<DashboardResponse.RecentScan> recent = scanLogRepository
                 .findTop3ByTag_Pet_Owner_IdOrderByScannedAtDesc(owner.getId())
                 .stream().map(this::toRecent).toList();
 
         DashboardResponse.Stats stats = new DashboardResponse.Stats(
-                totalPets, activeTags, scansToday, totalScans, lostActive);
+                totalPets, activeTags, scansToday, totalScans, lostActive, unread);
 
         return new DashboardResponse(stats, petDtos, recent);
     }

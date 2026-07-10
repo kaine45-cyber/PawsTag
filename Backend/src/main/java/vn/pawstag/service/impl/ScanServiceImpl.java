@@ -1,8 +1,10 @@
 package vn.pawstag.service.impl;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.pawstag.dto.request.ScanRequest;
+import vn.pawstag.event.ScanRecordedEvent;
 import vn.pawstag.dto.response.PublicPetResponse;
 import vn.pawstag.dto.response.PublicScanResponse;
 import vn.pawstag.dto.response.ScanLogResponse;
@@ -18,7 +20,6 @@ import vn.pawstag.mapper.PetMapper;
 import vn.pawstag.repository.OwnerRepository;
 import vn.pawstag.repository.ScanLogRepository;
 import vn.pawstag.repository.TagRepository;
-import vn.pawstag.service.GeocodingService;
 import vn.pawstag.service.NotificationService;
 import vn.pawstag.service.ScanService;
 
@@ -32,20 +33,20 @@ public class ScanServiceImpl implements ScanService {
     private final ScanLogRepository scanLogRepository;
     private final OwnerRepository ownerRepository;
     private final NotificationService notificationService;
-    private final GeocodingService geocodingService;
+    private final ApplicationEventPublisher eventPublisher;
     private final PetMapper petMapper;
 
     public ScanServiceImpl(TagRepository tagRepository,
                            ScanLogRepository scanLogRepository,
                            OwnerRepository ownerRepository,
                            NotificationService notificationService,
-                           GeocodingService geocodingService,
+                           ApplicationEventPublisher eventPublisher,
                            PetMapper petMapper) {
         this.tagRepository = tagRepository;
         this.scanLogRepository = scanLogRepository;
         this.ownerRepository = ownerRepository;
         this.notificationService = notificationService;
-        this.geocodingService = geocodingService;
+        this.eventPublisher = eventPublisher;
         this.petMapper = petMapper;
     }
 
@@ -68,16 +69,17 @@ public class ScanServiceImpl implements ScanService {
         Tag tag = tagRepository.findByPublicCode(normalize(request.publicCode()))
                 .orElseThrow(() -> new ResourceNotFoundException("Tag code not found"));
 
-        String locationName = geocodingService.reverse(request.lat(), request.lng());
+        // Lưu scan NGAY, chưa có locationName — reverse-geocode (HTTP, có thể mất vài giây)
+        // chạy nền sau khi transaction này commit, tránh giữ connection DB chờ Nominatim.
         ScanLog log = ScanLog.builder()
                 .tag(tag)
                 .latitude(request.lat())
                 .longitude(request.lng())
-                .locationName(locationName)               // reverse-geocode (OSM Nominatim)
                 .userAgent(request.userAgent())
                 .deviceType(detectDevice(request.userAgent()))
                 .build();
         ScanLog saved = scanLogRepository.save(log);
+        eventPublisher.publishEvent(new ScanRecordedEvent(saved.getId(), request.lat(), request.lng()));
 
         // Thông báo cho owner khi pet bị quét.
         Pet pet = tag.getPet();

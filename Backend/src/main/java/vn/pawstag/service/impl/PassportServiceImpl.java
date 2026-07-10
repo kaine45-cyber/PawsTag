@@ -117,9 +117,9 @@ public class PassportServiceImpl implements PassportService {
         MedicalNotes medical = new MedicalNotes(
                 p.getBloodType(),
                 idealWeight(p),
-                p.getAllergies() != null ? p.getAllergies() : "None known",
-                p.getMedications() != null ? p.getMedications() : "None",
-                p.isNeutered() ? "Yes" + (p.getNeuteredDate() != null ? " (" + p.getNeuteredDate().format(MON) + ")" : "") : "No",
+                p.getAllergies() != null ? p.getAllergies() : "Chưa ghi nhận dị ứng",
+                p.getMedications() != null ? p.getMedications() : "Không có",
+                p.isNeutered() ? "Có" + (p.getNeuteredDate() != null ? " (" + p.getNeuteredDate().format(MON) + ")" : "") : "Chưa",
                 p.getDiet());
 
         List<TravelItem> travel = buildTravel(vaccs, p, today);
@@ -162,20 +162,20 @@ public class PassportServiceImpl implements PassportService {
     private List<TravelItem> buildTravel(List<Vaccination> vaccs, Pet p, LocalDate today) {
         List<TravelItem> list = new ArrayList<>();
         Vaccination rabies = vaccs.stream().filter(v -> v.getName().toLowerCase().contains("rabies")).findFirst().orElse(null);
-        list.add(new TravelItem("Rabies vaccination",
-                rabies != null && rabies.getDueDate() != null ? "Valid until " + rabies.getDueDate().format(MON) : "Not recorded",
+        list.add(new TravelItem("Tiêm phòng dại",
+                rabies != null && rabies.getDueDate() != null ? "Còn hiệu lực đến " + rabies.getDueDate().format(MON) : "Chưa ghi nhận",
                 rabies != null && (rabies.getDueDate() == null || rabies.getDueDate().isAfter(today)) ? "ok" : "warn"));
-        list.add(new TravelItem("Microchip ISO 11784",
-                p.getMicrochipId() != null ? "#" + groupDigits(p.getMicrochipId()) : "Missing",
+        list.add(new TravelItem("Vi mạch ISO 11784",
+                p.getMicrochipId() != null ? "#" + groupDigits(p.getMicrochipId()) : "Chưa có",
                 p.getMicrochipId() != null ? "ok" : "warn"));
-        list.add(new TravelItem("Health certificate",
-                p.getLastVetVisit() != null ? "Issued " + p.getLastVetVisit().format(MON) : "Not issued",
+        list.add(new TravelItem("Giấy chứng nhận sức khoẻ",
+                p.getLastVetVisit() != null ? "Cấp ngày " + p.getLastVetVisit().format(MON) : "Chưa cấp",
                 p.getLastVetVisit() != null ? "ok" : "warn"));
-        list.add(new TravelItem("Tapeworm treatment", "Required for some countries", "warn"));
+        list.add(new TravelItem("Tẩy giun sán", "Yêu cầu ở một số quốc gia", "warn"));
         boolean parasite = vaccs.stream().anyMatch(v -> v.getName().toLowerCase().contains("parasite")
                 || (p.getMedications() != null && p.getMedications().toLowerCase().contains("flea")));
-        list.add(new TravelItem("Parasite treatment",
-                parasite ? "Treatment on record" : "Not recorded", parasite ? "ok" : "warn"));
+        list.add(new TravelItem("Diệt ký sinh trùng",
+                parasite ? "Đã có hồ sơ điều trị" : "Chưa ghi nhận", parasite ? "ok" : "warn"));
         return list;
     }
 

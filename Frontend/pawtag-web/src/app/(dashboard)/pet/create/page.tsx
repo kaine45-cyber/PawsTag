@@ -14,10 +14,10 @@ const inputClass =
 const PHOTO_TIP_KEYS = ["cw.tip1", "cw.tip2", "cw.tip3", "cw.tip4"];
 const TAG_INCLUDE_KEYS = ["cw.inc1", "cw.inc2", "cw.inc3", "cw.inc4", "cw.inc5"];
 
-/** "2 years, 6 months" → ISO birthDate (xấp xỉ). */
+/** "2 years, 6 months" hoặc "2 năm 6 tháng" → ISO birthDate (xấp xỉ). */
 function ageToBirthDate(text: string): string | undefined {
-  const y = /(\d+)\s*year/i.exec(text);
-  const m = /(\d+)\s*month/i.exec(text);
+  const y = /(\d+)\s*(?:year|năm)/i.exec(text);
+  const m = /(\d+)\s*(?:month|tháng)/i.exec(text);
   if (!y && !m) return undefined;
   const d = new Date();
   if (y) d.setFullYear(d.getFullYear() - parseInt(y[1], 10));
@@ -40,6 +40,7 @@ export default function CreatePetPage() {
 
   // Step 2
   const [name, setName]       = useState("");
+  const [species, setSpecies] = useState("dog");
   const [breed, setBreed]     = useState("");
   const [age, setAge]         = useState("");
   const [gender, setGender]   = useState("");
@@ -86,7 +87,7 @@ export default function CreatePetPage() {
 
       const pet = await petService.create({
         name: name.trim(),
-        species: "dog",
+        species,
         breed: breed || undefined,
         gender: gender || undefined,
         birthDate: ageToBirthDate(age),
@@ -173,8 +174,27 @@ export default function CreatePetPage() {
 
             <div className="flex flex-col gap-5">
               <Field label={t("cw.petName")}><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("cw.namePlaceholder")} className={inputClass} aria-label="Pet name" /></Field>
-              <Field label={t("cw.breed")}><input type="text" value={breed} onChange={(e) => setBreed(e.target.value)} placeholder="e.g. Pembroke Welsh Corgi" className={inputClass} aria-label="Breed" /></Field>
-              <Field label={t("cw.age")}><input type="text" value={age} onChange={(e) => setAge(e.target.value)} placeholder="e.g. 2 years, 6 months" className={inputClass} aria-label="Age" /></Field>
+              <Field label={t("cw.species")}>
+                <div className="grid grid-cols-5 gap-2">
+                  {[
+                    { k: "dog",    e: "🐕", l: t("sp.dog") },
+                    { k: "cat",    e: "🐈", l: t("sp.cat") },
+                    { k: "rabbit", e: "🐇", l: t("sp.rabbit") },
+                    { k: "bird",   e: "🦜", l: t("sp.bird") },
+                    { k: "other",  e: "🐾", l: t("sp.other") },
+                  ].map(({ k, e, l }) => (
+                    <button key={k} type="button" onClick={() => setSpecies(k)} aria-label={l}
+                      className={`flex flex-col items-center justify-center gap-1 h-[64px] rounded-2xl transition-all active:scale-95 ${
+                        species === k ? "gradient-brand text-white shadow-cta" : "bg-[#F0F4FA] text-[#6B7A8D] border border-[rgba(74,143,232,0.12)]"
+                      }`}>
+                      <span className="text-[20px] leading-none">{e}</span>
+                      <span className="text-[11px] font-bold font-display">{l}</span>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field label={t("cw.breed")}><input type="text" value={breed} onChange={(e) => setBreed(e.target.value)} placeholder={t("cw.breedPlaceholder")} className={inputClass} aria-label="Breed" /></Field>
+              <Field label={t("cw.age")}><input type="text" value={age} onChange={(e) => setAge(e.target.value)} placeholder={t("cw.agePlaceholder")} className={inputClass} aria-label="Age" /></Field>
               <Field label={t("cw.gender")}>
                 <div className="grid grid-cols-2 gap-3">
                   {[{ k: "male", l: t("cw.male") }, { k: "female", l: t("cw.female") }].map(({ k, l }) => (

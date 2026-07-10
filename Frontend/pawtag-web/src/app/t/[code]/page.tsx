@@ -36,8 +36,12 @@ export default function ScanProfilePage({ params }: Props) {
   const [scannedAt, setScannedAt] = useState("");
 
   useEffect(() => {
-    setScannedAt(new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }));
     let active = true;
+    async function markScannedAt() {
+      if (!active) return;
+      setScannedAt(new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }));
+    }
+    markScannedAt();
     (async () => {
       try {
         const res = await tagService.getPublic(code);
@@ -150,7 +154,7 @@ export default function ScanProfilePage({ params }: Props) {
             <div className="flex items-center gap-2 mt-2 flex-wrap text-[15px] text-[#6B7A8D] font-body">
               <span>🦮 {pet.breed}</span>
               {pet.gender && <><span className="text-[#C5CFD9]">•</span><span>{genderLabel}</span></>}
-              {pet.age && <><span className="text-[#C5CFD9]">•</span><span>{formatAge(pet.ageMonths, lang)}</span></>}
+              {pet.ageMonths != null && <><span className="text-[#C5CFD9]">•</span><span>{formatAge(pet.ageMonths, lang)}</span></>}
             </div>
           </div>
           <div className="text-right shrink-0">

@@ -15,7 +15,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Chuyển đổi Pet entity ↔ DTO. Tính các field "tính ra":
@@ -81,15 +85,41 @@ public class PetMapper {
         }
     }
 
+    /** Dùng cho 1 pet đơn lẻ (get/create/update/...). Nội bộ gọi lại toResponseBatch với danh sách 1 phần tử. */
     public PetResponse toResponse(Pet p) {
-        String tagCode = p.getId() == null ? null
-                : tagRepository.findFirstByPetIdAndStatus(p.getId(), TagStatus.ACTIVE)
-                        .map(vn.pawstag.entity.Tag::getPublicCode)
-                        .orElse(null);
-        int totalScans = p.getId() == null ? 0
-                : (int) scanLogRepository.countByTag_Pet_Id(p.getId());
-        int scansToday = p.getId() == null ? 0
-                : (int) scanLogRepository.countByTag_Pet_IdAndScannedAtAfter(p.getId(), startOfToday());
+        return toResponseBatch(List.of(p)).get(0);
+    }
+
+    /**
+     * Dựng PetResponse cho NHIỀU pet cùng lúc bằng 3 query gộp (thay vì 3 query/pet).
+     * Dùng cho /pet (list) và /dashboard — tránh N+1 khi owner có nhiều pet.
+     */
+    public List<PetResponse> toResponseBatch(List<Pet> pets) {
+        if (pets.isEmpty()) return List.of();
+
+        List<Long> ids = pets.stream().map(Pet::getId).filter(Objects::nonNull).toList();
+
+        Map<Long, String> tagCodes = ids.isEmpty() ? Collections.emptyMap()
+                : tagRepository.findActiveCodesByPetIds(ids, TagStatus.ACTIVE).stream()
+                        .collect(Collectors.toMap(TagRepository.PetTagCode::getPetId, TagRepository.PetTagCode::getPublicCode));
+
+        Map<Long, Long> totalScans = ids.isEmpty() ? Collections.emptyMap()
+                : scanLogRepository.countTotalByPetIds(ids).stream()
+                        .collect(Collectors.toMap(ScanLogRepository.PetScanCount::getPetId, ScanLogRepository.PetScanCount::getCnt));
+
+        Map<Long, Long> scansToday = ids.isEmpty() ? Collections.emptyMap()
+                : scanLogRepository.countTodayByPetIds(ids, startOfToday()).stream()
+                        .collect(Collectors.toMap(ScanLogRepository.PetScanCount::getPetId, ScanLogRepository.PetScanCount::getCnt));
+
+        return pets.stream()
+                .map(p -> buildResponse(p,
+                        tagCodes.get(p.getId()),
+                        totalScans.getOrDefault(p.getId(), 0L).intValue(),
+                        scansToday.getOrDefault(p.getId(), 0L).intValue()))
+                .toList();
+    }
+
+    private PetResponse buildResponse(Pet p, String tagCode, int totalScans, int scansToday) {
         return new PetResponse(
                 String.valueOf(p.getId()),
                 String.valueOf(p.getOwner().getId()),

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, PawPrint, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/LanguageContext";
+import { ROUTES } from "@/constants/routes";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -137,9 +138,9 @@ export default function LoginPage() {
               </button>
             </div>
             <div className="flex justify-end mt-2">
-              <button type="button" className="text-[14px] text-[#4A8FE8] font-bold font-display">
+              <Link href={ROUTES.forgotPassword} className="text-[14px] text-[#4A8FE8] font-bold font-display">
                 {t("lg.forgot")}
-              </button>
+              </Link>
             </div>
           </div>
 

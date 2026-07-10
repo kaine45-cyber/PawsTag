@@ -16,6 +16,8 @@ export function localizeNotifTitle(title: string, t: T): string {
   if ((m = /^(.+) was scanned!$/.exec(title))) return fill(t("ntf.t.scanned"), { name: m[1] });
   if ((m = /^(.+) scanned again$/.exec(title))) return fill(t("ntf.t.scannedAgain"), { name: m[1] });
   if ((m = /^(.+)'s NFC was tapped!$/.exec(title))) return fill(t("ntf.t.nfcTapped"), { name: m[1] });
+  if (title === "💉 Vaccination due soon") return t("ntf.t.vaccDue");
+  if (title === "💉 Vaccination overdue") return t("ntf.t.vaccOverdue");
   if (title === "🔔 Daily Summary") return t("ntf.t.dailySummary");
   if (title === "🐾 Profile Tip") return t("ntf.t.profileTip");
   if (title === "NFC Tag Delivered!") return t("ntf.t.delivered");
@@ -37,6 +39,10 @@ export function localizeNotifBody(body: string, t: T): string {
   if ((m = /^Someone reported finding (.+) and shared their location\.$/.exec(body))) return fill(t("ntf.b.foundLoc"), { name: m[1] });
   if ((m = /^Someone reported finding (.+)\.$/.exec(body))) return fill(t("ntf.b.found"), { name: m[1] });
   if ((m = /^A finder shared their location for (.+)\.$/.exec(body))) return fill(t("ntf.b.locFor"), { name: m[1] });
+  if ((m = /^(.+)'s (.+) vaccination (is|was) due on (\d{4})-(\d{2})-(\d{2})\.$/.exec(body))) {
+    const key = m[3] === "is" ? "ntf.b.vaccDue" : "ntf.b.vaccOverdue";
+    return fill(t(key), { name: m[1], vacc: m[2], date: `${m[6]}/${m[5]}/${m[4]}` });
+  }
   return body;
 }
 

@@ -10,9 +10,7 @@ export const ownerService = {
   uploadAvatar: async (file: File): Promise<User> => {
     const fd = new FormData();
     fd.append("file", file);
-    return (await api.post("/owners/me/avatar", fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })).data.data;
+    return (await api.post("/owners/me/avatar", fd)).data.data;
   },
 
   changePassword: async (currentPassword: string, newPassword: string) =>

@@ -14,6 +14,18 @@ const inputClass =
   "w-full h-[50px] px-[16px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]";
 
 interface Contact { name: string; phone: string }
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function imageError(file: File): string | null {
+  if (!IMAGE_TYPES.has(file.type)) return "Only JPG, PNG or WEBP images are allowed.";
+  if (file.size > MAX_IMAGE_BYTES) return "Image must be 5MB or smaller.";
+  return null;
+}
+
+function uploadMessage(error: unknown): string | undefined {
+  return (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+}
 
 export default function EditPetPage({ params }: { params: Promise<{ petId: string }> }) {
   const { petId } = use(params);
@@ -55,8 +67,16 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }));
 
   function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
+    const validation = imageError(file);
+    if (validation) {
+      setError(validation);
+      input.value = "";
+      return;
+    }
+    setError("");
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
   }
@@ -92,8 +112,8 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
       if (photoFile) { try { await petService.uploadPhoto(petId, photoFile); } catch { /* giữ */ } }
       await refreshPets();
       router.push(ROUTES.petDetail(petId));
-    } catch {
-      setError(t("ed.saveFailed"));
+    } catch (err) {
+      setError(uploadMessage(err) || t("ed.saveFailed"));
     } finally { setSaving(false); }
   }
 
@@ -113,7 +133,7 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
             <div className="flex flex-col items-center gap-2 text-[#4A8FE8]"><Camera size={32} /><span className="text-[14px] font-bold font-display">{t("ed.changePhoto")}</span></div>
           )}
           <span className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-white/90 text-[12px] font-bold text-[#4A8FE8] font-display flex items-center gap-1"><Camera size={13} /> {t("ed.change")}</span>
-          <input type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onPickPhoto} className="hidden" />
         </label>
 
         <Section title={t("ed.basicInfo")}>

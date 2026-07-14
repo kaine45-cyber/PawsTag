@@ -53,8 +53,6 @@ export const petService = {
   uploadPhoto: async (id: string, file: File): Promise<Pet> => {
     const fd = new FormData();
     fd.append("file", file);
-    return (await api.post(`/pets/${id}/photo`, fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })).data.data;
+    return (await api.post(`/pets/${id}/photo`, fd)).data.data;
   },
 };

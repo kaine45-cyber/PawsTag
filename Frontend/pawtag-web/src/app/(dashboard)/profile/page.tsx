@@ -9,13 +9,27 @@ import { useI18n } from "@/i18n/LanguageContext";
 import type { Lang } from "@/i18n/messages";
 import {
   Edit2, LogOut, Bell, Shield, HelpCircle, ChevronRight,
-  PawPrint, MapPin, Phone, Mail, Star, Check, X, Eye, EyeOff, Languages,
+  PawPrint, MapPin, Phone, Mail, Star, Check, X, Eye, EyeOff, Languages, Loader2,
 } from "lucide-react";
 
 type Modal = "password" | "notif" | "help" | null;
 
 const inputClass =
   "w-full h-[48px] px-[16px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.15)] text-[14px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]";
+
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function imageError(file: File): string | null {
+  if (!IMAGE_TYPES.has(file.type)) return "Only JPG, PNG or WEBP images are allowed.";
+  if (file.size > MAX_IMAGE_BYTES) return "Image must be 5MB or smaller.";
+  return null;
+}
+
+function uploadMessage(error: unknown): string {
+  return (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+    ?? "Could not upload image. Please try again.";
+}
 
 export default function ProfilePage() {
   const { user, pets, logout, setUser } = useAuth();
@@ -28,6 +42,8 @@ export default function ProfilePage() {
   const [city,     setCity]     = useState(user?.city  ?? "");
   const [saved,    setSaved]    = useState(false);
   const [modal,    setModal]    = useState<Modal>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
 
   async function handleSave() {
     try {
@@ -43,10 +59,24 @@ export default function ProfilePage() {
     const input = e.target;
     const f = input.files?.[0];
     if (!f) return;
+    const validation = imageError(f);
+    if (validation) {
+      setAvatarError(validation);
+      input.value = "";
+      return;
+    }
+    setAvatarBusy(true);
+    setAvatarError("");
     try {
       const updated = await ownerService.uploadAvatar(f);
       setUser(updated);
-    } catch { /* ignore */ }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      setAvatarBusy(false);
+    } catch (err) {
+      setAvatarError(uploadMessage(err));
+      setAvatarBusy(false);
+    }
     finally { input.value = ""; }   // reset để chọn lại được (kể cả cùng file)
   }
 
@@ -84,10 +114,11 @@ export default function ProfilePage() {
               aria-label="Change avatar"
               className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-card cursor-pointer"
             >
-              <Edit2 size={12} className="text-[#4A8FE8]" />
-              <input type="file" accept="image/*" onChange={onPickAvatar} className="hidden" />
+              {avatarBusy ? <Loader2 size={12} className="text-[#4A8FE8] animate-spin" /> : <Edit2 size={12} className="text-[#4A8FE8]" />}
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onPickAvatar} disabled={avatarBusy} className="hidden" />
             </label>
           </div>
+          {avatarError && <p className="text-[12px] text-white/90 font-body text-center">{avatarError}</p>}
           <div className="text-center">
             <p className="text-white font-black text-[20px] font-display">{user?.name ?? t("profile.owner")}</p>
             <p className="text-white/70 text-[13px] font-body">{user?.email ?? ""}</p>

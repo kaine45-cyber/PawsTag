@@ -6,7 +6,6 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 const api = axios.create({
   baseURL: apiBaseUrl,
   timeout: 10_000,
-  headers: { "Content-Type": "application/json" },
 });
 
 // Attach JWT to every browser request when available.

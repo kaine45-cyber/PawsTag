@@ -22,6 +22,18 @@ const inputClass =
 
 const PHOTO_TIP_KEYS = ["cw.tip1", "cw.tip2", "cw.tip3", "cw.tip4"];
 const TAG_INCLUDE_KEYS = ["cw.inc1", "cw.inc2", "cw.inc3", "cw.inc4", "cw.inc5"];
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function imageError(file: File): string | null {
+  if (!IMAGE_TYPES.has(file.type)) return "Only JPG, PNG or WEBP images are allowed.";
+  if (file.size > MAX_IMAGE_BYTES) return "Image must be 5MB or smaller.";
+  return null;
+}
+
+function uploadMessage(error: unknown): string | undefined {
+  return (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+}
 
 /** "2 years, 6 months" hoặc "2 năm 6 tháng" → ISO birthDate (xấp xỉ). */
 function ageToBirthDate(text: string): string | undefined {
@@ -66,8 +78,16 @@ export default function CreatePetPage() {
   const [error, setError]   = useState("");
 
   function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.target;
     const f = e.target.files?.[0];
     if (!f) return;
+    const validation = imageError(f);
+    if (validation) {
+      setError(validation);
+      input.value = "";
+      return;
+    }
+    setError("");
     setPhotoFile(f);
     setPhotoPreview(URL.createObjectURL(f));
   }
@@ -115,7 +135,7 @@ export default function CreatePetPage() {
       router.push(ROUTES.petTags(pet.id));
     } catch (e) {
       // Ưu tiên thông báo rõ ràng từ backend (mã không tồn tại / đã kích hoạt).
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const msg = uploadMessage(e);
       setError(msg || t("cw.createFailed"));
     } finally {
       setSaving(false);
@@ -165,7 +185,7 @@ export default function CreatePetPage() {
                   <p className="text-[14px] text-[#9BAABB] font-body">{t("cw.fileHint")}</p>
                 </>
               )}
-              <input type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onPickPhoto} className="hidden" />
             </label>
 
             <div className="mt-6 rounded-2xl bg-[#EEF2FB] p-5">

@@ -23,10 +23,11 @@ export interface PassportData {
   vaccinations: { id: string; name: string; given: string; due: string; status: string }[];
   vetVisits: { id: string; vetName: string; clinic: string; note: string; date: string }[];
   medical: {
-    bloodType: string | null; idealWeight: string; allergies: string;
-    medications: string; neutered: string; diet: string | null;
+    bloodType: string | null; idealWeight: string; allergies: string | null;
+    medications: string | null; neutered: boolean; neuteredDate: string | null; diet: string | null;
   };
-  travel: { item: string; detail: string; status: string }[];
+  // Trung tính ngôn ngữ: code/detailCode được dịch ở client (xem passport/page.tsx).
+  travel: { code: string; status: string; detailCode: string; detailValue: string | null }[];
 }
 
 export interface VaccinationInput { name: string; givenDate?: string; dueDate?: string }

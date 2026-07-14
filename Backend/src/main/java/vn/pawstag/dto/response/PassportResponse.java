@@ -42,8 +42,16 @@ public record PassportResponse(
 
     public record MedicalNotes(
             String bloodType, String idealWeight, String allergies,
-            String medications, String neutered, String diet
+            String medications, boolean neutered, String neuteredDate, String diet
     ) {}
 
-    public record TravelItem(String item, String detail, String status) {}
+    /**
+     * Mục checklist du lịch — TRUNG TÍNH NGÔN NGỮ để client tự dịch:
+     *   code       : RABIES | MICROCHIP | HEALTH_CERT | DEWORMING | PARASITE
+     *   status     : ok | warn
+     *   detailCode : VALID_UNTIL | NOT_RECORDED | MICROCHIP_NO | NOT_PRESENT
+     *                | ISSUED_ON | NOT_ISSUED | REGION_REQUIRED | TREATED
+     *   detailValue: giá trị động chèn vào detail (ngày / số vi mạch) — null nếu không có
+     */
+    public record TravelItem(String code, String status, String detailCode, String detailValue) {}
 }

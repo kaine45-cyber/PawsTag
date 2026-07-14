@@ -17,6 +17,11 @@ import { formatAge } from "@/utils/formatter";
 const FALLBACK = "/images/corgi.jpg";
 type Tab = "Profile" | "Health" | "Travel";
 
+// Emoji cho từng mục checklist du lịch (khớp code trung tính từ backend).
+const TRAVEL_EMOJI: Record<string, string> = {
+  RABIES: "💉", MICROCHIP: "💾", HEALTH_CERT: "📋", DEWORMING: "🔍", PARASITE: "🐛",
+};
+
 export default function PassportPage() {
   const { pets } = useAuth();
   const { t } = useI18n();
@@ -289,7 +294,7 @@ function HealthTab({ data, petId, onUpdate, onSave, onShare, exporting }: { data
                   <p className="text-[15px] font-extrabold text-[#1A2332] font-display">{v.name}</p>
                   <p className="text-[12px] text-[#9BAABB] font-body">{t("pp.given")}: {v.given} · {t("pp.due")}: {v.due}</p>
                 </div>
-                <span className={`text-[12px] font-bold font-display ${v.status === "Valid" ? "text-[#22C55E]" : v.status === "Expiring" ? "text-[#F59E0B]" : "text-[#EF4444]"}`}>{v.status}</span>
+                <span className={`text-[12px] font-bold font-display ${v.status === "Valid" ? "text-[#22C55E]" : v.status === "Expiring" ? "text-[#F59E0B]" : "text-[#EF4444]"}`}>{t(`pp.vs.${v.status}`)}</span>
                 <button type="button" aria-label="Delete vaccination" onClick={() => delVacc(v.id)} className="shrink-0"><Trash2 size={16} className="text-[#C5CFD9]" /></button>
               </div>
             ))}
@@ -321,9 +326,9 @@ function HealthTab({ data, petId, onUpdate, onSave, onShare, exporting }: { data
         <div className="p-4 grid grid-cols-2 gap-3">
           <MedCell emoji="🩸" label={t("pp.bloodType")} value={data.medical.bloodType || "—"} />
           <MedCell emoji="⚖️" label={t("pp.idealWeight")} value={data.medical.idealWeight} />
-          <MedCell emoji="🚫" label={t("pp.allergies")} value={data.medical.allergies} />
-          <MedCell emoji="💊" label={t("pp.medications")} value={data.medical.medications} />
-          <MedCell emoji="🧬" label={t("pp.neutered")} value={data.medical.neutered} />
+          <MedCell emoji="🚫" label={t("pp.allergies")} value={data.medical.allergies || t("pp.allergiesNone")} />
+          <MedCell emoji="💊" label={t("pp.medications")} value={data.medical.medications || t("pp.medsNone")} />
+          <MedCell emoji="🧬" label={t("pp.neutered")} value={data.medical.neutered ? t("pp.neuteredYes") + (data.medical.neuteredDate ? ` (${data.medical.neuteredDate})` : "") : t("pp.neuteredNo")} />
           <MedCell emoji="❤️" label={t("pp.diet")} value={data.medical.diet || "—"} />
         </div>
       </Card>
@@ -398,10 +403,10 @@ function TravelTab({ data, onSave, onShare, exporting }: { data: PassportData; o
 
       {data.travel.map((item, i) => (
         <div key={i} className="flex items-center gap-3 bg-white rounded-2xl px-4 py-4 shadow-card">
-          <span className="text-[24px] shrink-0">{["💉", "💾", "📋", "🔍", "🐛"][i] ?? "📄"}</span>
+          <span className="text-[24px] shrink-0">{TRAVEL_EMOJI[item.code] ?? "📄"}</span>
           <div className="flex-1 min-w-0">
-            <p className="text-[16px] font-extrabold text-[#1A2332] font-display">{item.item}</p>
-            <p className="text-[13px] text-[#9BAABB] font-body">{item.detail}</p>
+            <p className="text-[16px] font-extrabold text-[#1A2332] font-display">{t(`pp.tv.${item.code}`)}</p>
+            <p className="text-[13px] text-[#9BAABB] font-body">{t(`pp.tvd.${item.detailCode}`).replace("{value}", item.detailValue ?? "")}</p>
           </div>
           {item.status === "ok"
             ? <span className="w-7 h-7 rounded-md bg-[#22C55E] flex items-center justify-center shrink-0"><Check size={16} color="#fff" strokeWidth={3} /></span>

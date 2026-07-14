@@ -401,6 +401,10 @@ export const messages: Record<Lang, Record<string, string>> = {
     "cw.nameRequired": "Pet name is required.",
     "cw.phoneRequired": "Primary contact phone is required.",
     "cw.createFailed": "Could not create pet. Please try again.",
+    "cw.tagTitle": "QR Tag Code",
+    "cw.tagSub": "Enter or scan the code printed on your physical PawsTag.",
+    "cw.tagScan": "Scan",
+    "cw.tagRequired": "Please enter the QR code printed on your tag.",
 
     // ── Edit pet ──
     "ed.title": "Edit Pet",
@@ -562,6 +566,8 @@ export const messages: Record<Lang, Record<string, string>> = {
     // ── Public scan (full) ──
     "ps.notFound": "Tag Not Found",
     "ps.notFoundDesc": "No pet is linked to tag",
+    "ps.unassigned": "Tag Not Activated Yet",
+    "ps.unassignedDesc": "This tag hasn't been linked to a pet yet — tag",
     "ps.learnMore": "Learn about PawsTag",
     "ps.lostBanner": "LOST PET — PLEASE HELP!",
     "ps.lostFallback": "Please help {name} get home.",
@@ -1080,6 +1086,10 @@ export const messages: Record<Lang, Record<string, string>> = {
     "cw.nameRequired": "Vui lòng nhập tên thú cưng.",
     "cw.phoneRequired": "Vui lòng nhập SĐT liên hệ chính.",
     "cw.createFailed": "Không thể tạo thú cưng. Vui lòng thử lại.",
+    "cw.tagTitle": "Mã QR trên thẻ",
+    "cw.tagSub": "Nhập hoặc quét mã in trên thẻ PawsTag vật lý của bạn.",
+    "cw.tagScan": "Quét",
+    "cw.tagRequired": "Vui lòng nhập mã QR in trên thẻ của bạn.",
 
     // ── Edit pet ──
     "ed.title": "Sửa thú cưng",
@@ -1241,6 +1251,8 @@ export const messages: Record<Lang, Record<string, string>> = {
     // ── Public scan (full) ──
     "ps.notFound": "Không tìm thấy thẻ",
     "ps.notFoundDesc": "Không có thú cưng nào liên kết với thẻ",
+    "ps.unassigned": "Thẻ chưa được kích hoạt",
+    "ps.unassignedDesc": "Thẻ này chưa được gắn với thú cưng nào — mã",
     "ps.learnMore": "Tìm hiểu về PawsTag",
     "ps.lostBanner": "THÚ CƯNG ĐI LẠC — XIN GIÚP ĐỠ!",
     "ps.lostFallback": "Xin hãy giúp {name} về nhà.",

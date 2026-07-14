@@ -10,6 +10,8 @@ export interface EmergencyContactInput {
 
 export interface PetCreateInput {
   name: string;
+  /** Mã QR (public_code) trên thẻ vật lý — BẮT BUỘC khi tạo pet để kích hoạt thẻ đã in sẵn. */
+  publicCode?: string;
   species?: string;
   breed?: string;
   color?: string;

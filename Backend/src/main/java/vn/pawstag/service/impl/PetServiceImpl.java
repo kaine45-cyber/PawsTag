@@ -7,6 +7,7 @@ import vn.pawstag.dto.request.PetRequest;
 import vn.pawstag.dto.response.PetResponse;
 import vn.pawstag.entity.Owner;
 import vn.pawstag.entity.Pet;
+import vn.pawstag.exception.BadRequestException;
 import vn.pawstag.exception.ResourceNotFoundException;
 import vn.pawstag.mapper.PetMapper;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,12 +44,22 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public PetResponse create(String ownerEmail, PetRequest request) {
+        // Mô hình "QR in trước, kích hoạt sau": pet PHẢI kèm mã QR (public_code) của thẻ vật lý.
+        // KHÔNG tự sinh mã mới. Validate ở đây vì PetRequest dùng chung cho create + update.
+        String publicCode = request.publicCode();
+        if (publicCode == null || publicCode.isBlank()) {
+            throw new BadRequestException("Mã QR (publicCode) là bắt buộc khi tạo thú cưng");
+        }
+
         Owner owner = requireOwner(ownerEmail);
         Pet pet = new Pet();
         pet.setOwner(owner);
         petMapper.apply(pet, request);
         Pet saved = petRepository.save(pet);
-        tagService.createForPet(saved);          // auto sinh 1 tag ACTIVE (digital-first)
+
+        // Gắn tag đã in sẵn (UNASSIGNED) vào pet — cùng transaction: nếu mã lỗi thì
+        // toàn bộ (kể cả việc lưu pet) rollback, không tạo pet "mồ côi" không có thẻ.
+        tagService.assignExistingTagToPet(publicCode, saved);
         return petMapper.toResponse(saved);
     }
 
@@ -77,7 +88,12 @@ public class PetServiceImpl implements PetService {
     @Transactional
     public void delete(String ownerEmail, Long petId) {
         Pet pet = requirePet(ownerEmail, petId);
-        tagService.releaseTagsForPet(pet);       // thu hồi tag (UNASSIGNED) tránh vướng FK
+        // Thu hồi tag về UNASSIGNED (gỡ pet_id) để tránh vướng FK khi xoá pet.
+        // RỦI RO LỊCH SỬ: scan_logs vẫn trỏ tới tag này. Khi tag được kích hoạt lại
+        // cho pet khác, lịch sử quét cũ sẽ lẫn giữa 2 pet. Chưa xử lý — giữ logic hiện tại
+        // theo yêu cầu; nếu cần bảo toàn lịch sử, nên archive tag (thêm status RETIRED)
+        // thay vì trả về UNASSIGNED để tái sử dụng.
+        tagService.releaseTagsForPet(pet);
         petRepository.delete(pet);
     }
 

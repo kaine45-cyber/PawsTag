@@ -8,8 +8,12 @@ import java.util.List;
 
 public interface TagService {
 
-    /** Tự sinh 1 tag ACTIVE khi tạo pet (luồng digital-first). */
-    void createForPet(Pet pet);
+    /**
+     * Kích hoạt một tag ĐÃ IN SẴN (UNASSIGNED, pet_id = null) vào pet vừa tạo.
+     * QR được admin sinh trước qua {@link #generateBatch(int)}; luồng tạo pet KHÔNG tự sinh mã mới.
+     * Ném BadRequestException nếu mã không tồn tại / đã gán pet khác / pet đã có thẻ ACTIVE.
+     */
+    void assignExistingTagToPet(String publicCode, Pet pet);
 
     /** Thu hồi tag của pet (khi xóa pet) → trả về UNASSIGNED, gỡ pet. */
     void releaseTagsForPet(Pet pet);

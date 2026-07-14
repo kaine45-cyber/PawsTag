@@ -1,46 +1,209 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
+import { RefreshCw } from "lucide-react";
+import { useI18n } from "@/i18n/LanguageContext";
 
-/** Quét QR bằng camera. Gọi onResult(text) khi đọc được. */
+type CameraInfo = { id: string; label: string };
+
+const BACK_RX = /(back|rear|environment|sau)/i;
+const SCAN_CONFIG = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+/**
+ * Chọn camera sau theo thứ tự ưu tiên:
+ *  1) label chứa back / rear / environment / sau
+ *  2) camera cuối danh sách (thường là camera sau trên điện thoại)
+ *  3) camera đầu danh sách
+ */
+function pickBackCameraId(cameras: CameraInfo[]): string | null {
+  if (cameras.length === 0) return null;
+  const back = cameras.find((c) => BACK_RX.test(c.label));
+  if (back) return back.id;
+  const last = cameras[cameras.length - 1];
+  if (last) return last.id;
+  const first = cameras[0];
+  return first ? first.id : null;
+}
+
+/**
+ * Quét QR bằng camera — gọi onResult(text) khi đọc được.
+ * KHÔNG start bằng { facingMode: "environment" } (fail trên nhiều máy) mà:
+ * liệt kê camera qua getCameras() → chọn camera sau → start bằng camera.id.
+ * Có dropdown đổi camera, nút retry, và thông báo lỗi cụ thể.
+ */
 export default function QrScanner({ onResult }: { onResult: (text: string) => void }) {
+  const { t } = useI18n();
   const containerId = `qr-${useId().replace(/:/g, "")}`;
+
   const onResultRef = useRef(onResult);
+  useEffect(() => { onResultRef.current = onResult; }, [onResult]);
+
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const queueRef = useRef<Promise<void>>(Promise.resolve()); // nối tiếp mọi thao tác → không chạy 2 scanner
+  const activeRef = useRef(true);   // component còn mounted?
+  const decodedRef = useRef(false); // đã đọc được 1 mã → không start lại
+
+  const [cameras, setCameras] = useState<CameraInfo[]>([]);
+  const [activeCameraId, setActiveCameraId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [phase, setPhase] = useState<"loading" | "scanning" | "error">("loading");
 
+  // Đưa task vào hàng đợi để các thao tác camera chạy tuần tự (tránh double-start, an toàn StrictMode).
+  const enqueue = useCallback((task: () => Promise<void>) => {
+    queueRef.current = queueRef.current.catch(() => {}).then(task);
+    return queueRef.current;
+  }, []);
+
+  // Dừng scanner an toàn: chỉ stop khi đang chạy, nuốt mọi rejection để không crash UI.
+  const safeStop = useCallback(async () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+    try {
+      const state = scanner.getState();
+      if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+        await scanner.stop();
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Ánh xạ lỗi getUserMedia → thông báo dễ hiểu (lỗi có thể là Error hoặc string).
+  const describeError = useCallback((e: unknown): string => {
+    const name = (e as { name?: string } | null)?.name ?? "";
+    const raw = typeof e === "string" ? e : ((e as { message?: string } | null)?.message ?? "");
+    const s = `${name} ${raw}`;
+    if (/NotAllowed|Permission|denied/i.test(s)) return t("scanner.errPermission");
+    if (/NotFound|device not found|no camera/i.test(s)) return t("scanner.errNotFound");
+    if (/NotReadable|Could not start video source|in use|busy|TrackStart/i.test(s)) return t("scanner.errInUse");
+    if (/Overconstrained|constraint/i.test(s)) return t("scanner.errOverconstrained");
+    return t("scanner.errGeneric");
+  }, [t]);
+
+  // Quét thành công: stop → clear → onResult (đúng thứ tự), chỉ 1 lần.
+  const handleDecoded = useCallback((decoded: string) => {
+    if (decodedRef.current) return;
+    decodedRef.current = true;
+    enqueue(async () => {
+      await safeStop();
+      try { scannerRef.current?.clear(); } catch { /* ignore */ }
+      onResultRef.current(decoded);
+    });
+  }, [enqueue, safeStop]);
+
+  // Start bằng cameraId cụ thể (KHÔNG dùng facingMode). Phải được gọi bên trong queue.
+  const doStart = useCallback(async (cameraId: string) => {
+    const scanner = scannerRef.current;
+    if (!scanner || !activeRef.current || decodedRef.current) return;
+    await safeStop(); // đảm bảo phiên trước đã dừng trước khi start phiên mới
+    if (!activeRef.current || decodedRef.current) return;
+    try {
+      await scanner.start(cameraId, SCAN_CONFIG, (text) => handleDecoded(text), () => { /* bỏ qua lỗi đọc từng frame */ });
+      if (!activeRef.current || decodedRef.current) { await safeStop(); return; }
+      setActiveCameraId(cameraId);
+      setError("");
+      setPhase("scanning");
+    } catch (e) {
+      if (!activeRef.current) return;
+      setError(describeError(e));
+      setPhase("error");
+    }
+  }, [safeStop, handleDecoded, describeError]);
+
+  // Liệt kê camera → chọn camera sau → start. Phải được gọi bên trong queue.
+  const doInit = useCallback(async () => {
+    if (!activeRef.current) return;
+    setPhase("loading");
+    setError("");
+
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setError(t("scanner.errUnsupported"));
+      setPhase("error");
+      return;
+    }
+
+    let devices: CameraInfo[] = [];
+    try {
+      devices = await Html5Qrcode.getCameras(); // yêu cầu quyền + trả danh sách camera
+    } catch (e) {
+      if (!activeRef.current) return;
+      setError(describeError(e));
+      setPhase("error");
+      return;
+    }
+    if (!activeRef.current) return;
+
+    setCameras(devices);
+    const id = pickBackCameraId(devices);
+    if (!id) {
+      setError(t("scanner.errNotFound"));
+      setPhase("error");
+      return;
+    }
+    await doStart(id);
+  }, [t, describeError, doStart]);
+
+  // Giữ doInit mới nhất trong ref để effect mount KHÔNG phụ thuộc doInit
+  // (tránh khởi động lại camera khi đổi ngôn ngữ / re-render).
+  const doInitRef = useRef(doInit);
+  useEffect(() => { doInitRef.current = doInit; }, [doInit]);
+
+  // Mount: tạo scanner 1 lần, chạy init. Unmount: stop + clear an toàn. Chịu được React StrictMode.
   useEffect(() => {
-    onResultRef.current = onResult;
-  }, [onResult]);
-
-  useEffect(() => {
-    let stopped = false;
-    const scanner = new Html5Qrcode(containerId);
-
-    scanner
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        (decoded) => {
-          if (stopped) return;
-          stopped = true;
-          scanner.stop().catch(() => {});
-          onResultRef.current(decoded);
-        },
-        () => { /* lỗi đọc từng frame — bỏ qua */ },
-      )
-      .catch(() => setError("Cannot access camera. Please allow camera permission."));
+    activeRef.current = true;
+    decodedRef.current = false;
+    if (!scannerRef.current) scannerRef.current = new Html5Qrcode(containerId);
+    enqueue(() => doInitRef.current());
 
     return () => {
-      stopped = true;
-      scanner.stop().then(() => scanner.clear()).catch(() => {});
+      activeRef.current = false;
+      enqueue(async () => {
+        await safeStop();
+        try { scannerRef.current?.clear(); } catch { /* ignore */ }
+      });
     };
-  }, [containerId]);
+  }, [containerId, enqueue, safeStop]);
+
+  function retry() {
+    decodedRef.current = false;
+    enqueue(() => doInitRef.current());
+  }
+
+  function switchCamera(id: string) {
+    if (id === activeCameraId) return;
+    decodedRef.current = false;
+    enqueue(() => doStart(id));
+  }
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2 w-full">
       <div id={containerId} className="w-full max-w-[280px] rounded-2xl overflow-hidden" />
-      {error && <p className="text-[13px] text-[#EF4444] font-body text-center">{error}</p>}
+
+      {cameras.length > 1 && (
+        <select
+          value={activeCameraId ?? cameras[0]?.id ?? ""}
+          onChange={(e) => switchCamera(e.target.value)}
+          aria-label={t("scanner.selectCamera")}
+          className="w-full max-w-[280px] h-9 px-3 rounded-xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.15)] text-[12px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8]"
+        >
+          {cameras.map((c, i) => (
+            <option key={c.id} value={c.id}>{c.label || `Camera ${i + 1}`}</option>
+          ))}
+        </select>
+      )}
+
+      {phase === "error" && error && (
+        <p className="text-[13px] text-[#EF4444] font-body text-center max-w-[280px]">{error}</p>
+      )}
+
+      {phase === "error" && (
+        <button
+          type="button"
+          onClick={retry}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#EEF2FB] text-[#4A8FE8] text-[13px] font-bold font-display active:scale-95"
+        >
+          <RefreshCw size={14} /> {t("scanner.retry")}
+        </button>
+      )}
     </div>
   );
 }

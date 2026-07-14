@@ -15,6 +15,11 @@ public record PetRequest(
         @NotBlank(message = "is required")
         String name,
 
+        // Mã QR trên thẻ vật lý (public_code). BẮT BUỘC khi tạo pet — kích hoạt thẻ đã in sẵn.
+        // Không dùng khi update (bỏ qua). Validate ở PetServiceImpl.create() vì record này
+        // dùng chung cho cả create lẫn update.
+        String publicCode,
+
         String species,          // map sang pet.type
         String breed,
         String color,

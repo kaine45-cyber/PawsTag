@@ -27,6 +27,7 @@ export default function ScanProfilePage({ params }: Props) {
   const { code } = use(params);
   const { t, lang } = useI18n();
   const [pet, setPet] = useState<PublicPet | null>(null);
+  const [unassigned, setUnassigned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [locState, setLocState] = useState<LocationState>("idle");
@@ -45,7 +46,10 @@ export default function ScanProfilePage({ params }: Props) {
     (async () => {
       try {
         const res = await tagService.getPublic(code);
-        if (active) setPet(res.status === "ACTIVE" ? res.pet : null);
+        if (active) {
+          setPet(res.status === "ACTIVE" ? res.pet : null);
+          setUnassigned(res.status === "UNASSIGNED");
+        }
         // Ghi nhận lượt quét ngay khi mở trang tag (không cần chia sẻ vị trí).
         if (res.status === "ACTIVE" && !recordedCodes.has(code)) {
           recordedCodes.add(code);
@@ -86,12 +90,17 @@ export default function ScanProfilePage({ params }: Props) {
   }
 
   if (!pet) {
+    // Tag CHƯA kích hoạt (đã in nhưng chưa gắn pet) hiển thị khác với mã hoàn toàn không tồn tại.
+    const title = unassigned ? t("ps.unassigned") : t("ps.notFound");
+    const desc  = unassigned ? t("ps.unassignedDesc") : t("ps.notFoundDesc");
+    const iconBg = unassigned ? "bg-[#EEF5FF]" : "bg-[#FEF2F2]";
+    const iconColor = unassigned ? "text-[#4A8FE8]" : "text-[#EF4444]";
     return (
       <div className="min-h-screen bg-[#F7F9FC] flex flex-col items-center justify-center px-5 gap-5">
-        <div className="w-20 h-20 rounded-full bg-[#FEF2F2] flex items-center justify-center"><PawPrint size={32} className="text-[#EF4444]" /></div>
+        <div className={`w-20 h-20 rounded-full ${iconBg} flex items-center justify-center`}><PawPrint size={32} className={iconColor} /></div>
         <div className="text-center">
-          <h1 className="text-[22px] font-black text-[#1A2332] font-display">{t("ps.notFound")}</h1>
-          <p className="text-[13px] text-[#6B7A8D] font-body mt-2">{t("ps.notFoundDesc")} <span className="font-mono font-bold text-[#1A2332]">{code}</span></p>
+          <h1 className="text-[22px] font-black text-[#1A2332] font-display">{title}</h1>
+          <p className="text-[13px] text-[#6B7A8D] font-body mt-2">{desc} <span className="font-mono font-bold text-[#1A2332]">{code}</span></p>
         </div>
         <Link href="/" className="px-6 py-3 rounded-2xl gradient-brand text-white font-bold font-display shadow-cta">{t("ps.learnMore")}</Link>
       </div>

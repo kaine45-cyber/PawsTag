@@ -41,16 +41,33 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
-    public void createForPet(Pet pet) {
-        Tag tag = Tag.builder()
-                .publicCode(codeGenerator.uniquePublicCode())
-                .pet(pet)
-                .status(TagStatus.ACTIVE)
-                .type(TagType.QR)
-                .nfcLinked(false)
-                .activatedAt(Instant.now())
-                .build();
-        tagRepository.save(tag);
+    public void assignExistingTagToPet(String publicCode, Pet pet) {
+        assignInternal(publicCode, pet);
+    }
+
+    /**
+     * Logic dùng chung cho luồng tạo pet ({@link #assignExistingTagToPet}) và kích hoạt thủ công
+     * ({@link #activate}). Chỉ nhận tag ĐÃ TỒN TẠI, đang UNASSIGNED, chưa gắn pet. Không sinh mã mới.
+     */
+    private Tag assignInternal(String publicCode, Pet pet) {
+        String code = normalize(publicCode);
+        Tag tag = tagRepository.findByPublicCode(code)
+                .orElseThrow(() -> new BadRequestException("Mã QR không tồn tại: " + code));
+
+        if (tag.getStatus() != TagStatus.UNASSIGNED || tag.getPet() != null) {
+            throw new BadRequestException("Mã QR đã được kích hoạt cho thú cưng khác");
+        }
+
+        // Nghiệp vụ 1 thẻ ACTIVE / pet — chặn gán thêm khi pet đã có thẻ đang hoạt động.
+        if (pet.getId() != null
+                && tagRepository.findFirstByPetIdAndStatus(pet.getId(), TagStatus.ACTIVE).isPresent()) {
+            throw new BadRequestException("Thú cưng đã có thẻ QR đang hoạt động");
+        }
+
+        tag.setPet(pet);
+        tag.setStatus(TagStatus.ACTIVE);
+        tag.setActivatedAt(Instant.now());
+        return tagRepository.save(tag);
     }
 
     @Override
@@ -91,18 +108,7 @@ public class TagServiceImpl implements TagService {
         Owner owner = requireOwner(ownerEmail);
         Pet pet = petRepository.findByIdAndOwnerId(petId, owner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet not found"));
-
-        Tag tag = tagRepository.findByPublicCode(publicCode.trim().toUpperCase())
-                .orElseThrow(() -> new ResourceNotFoundException("Tag code not found"));
-
-        if (tag.getStatus() == TagStatus.ACTIVE && tag.getPet() != null) {
-            throw new BadRequestException("Tag already assigned to a pet");
-        }
-
-        tag.setPet(pet);
-        tag.setStatus(TagStatus.ACTIVE);
-        tag.setActivatedAt(Instant.now());
-        return TagResponse.from(tagRepository.save(tag));
+        return TagResponse.from(assignInternal(publicCode, pet));
     }
 
     @Override
@@ -127,5 +133,10 @@ public class TagServiceImpl implements TagService {
     private Owner requireOwner(String email) {
         return ownerRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
+    }
+
+    /** Chuẩn hoá public_code như lúc quét: bỏ khoảng trắng + in hoa. Khớp normalize ở ScanServiceImpl. */
+    private String normalize(String code) {
+        return code == null ? "" : code.trim().toUpperCase();
     }
 }

@@ -1,12 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Check, ArrowRight, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Camera, Check, ArrowRight, Trash2, Plus, QrCode, X } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { petService, type EmergencyContactInput } from "@/services/pet.service";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/LanguageContext";
+
+const QrScanner = dynamic(() => import("@/components/scan/QrScanner"), { ssr: false });
+
+/** Tách mã thẻ từ text quét được (URL .../t/CODE hoặc chính mã). */
+function extractTagCode(text: string): string {
+  const m = text.match(/\/t\/([A-Za-z0-9]+)/);
+  return (m ? m[1] : text.trim()).toUpperCase();
+}
 
 const inputClass =
   "w-full h-[52px] px-[18px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]";
@@ -50,6 +59,8 @@ export default function CreatePetPage() {
   const [contacts, setContacts] = useState<Contact[]>([
     { name: user?.name ?? "", phone: user?.phone ?? "" },
   ]);
+  const [tagCode, setTagCode] = useState("");
+  const [scanning, setScanning] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
@@ -78,6 +89,8 @@ export default function CreatePetPage() {
     if (!name.trim()) { setError(t("cw.nameRequired")); setStep(2); return; }
     const primary = contacts[0];
     if (!primary?.phone.trim()) { setError(t("cw.phoneRequired")); return; }
+    const code = tagCode.trim().toUpperCase();
+    if (!code) { setError(t("cw.tagRequired")); return; }
     setError("");
     setSaving(true);
     try {
@@ -87,6 +100,7 @@ export default function CreatePetPage() {
 
       const pet = await petService.create({
         name: name.trim(),
+        publicCode: code,
         species,
         breed: breed || undefined,
         gender: gender || undefined,
@@ -99,8 +113,10 @@ export default function CreatePetPage() {
       if (photoFile) { try { await petService.uploadPhoto(pet.id, photoFile); } catch { /* giữ pet */ } }
       await refreshPets();
       router.push(ROUTES.petTags(pet.id));
-    } catch {
-      setError(t("cw.createFailed"));
+    } catch (e) {
+      // Ưu tiên thông báo rõ ràng từ backend (mã không tồn tại / đã kích hoạt).
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || t("cw.createFailed"));
     } finally {
       setSaving(false);
     }
@@ -237,6 +253,45 @@ export default function CreatePetPage() {
               <button type="button" onClick={addContact} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-[#4A8FE8]/40 text-[#4A8FE8] font-bold font-display active:scale-95">
                 <Plus size={18} /> {t("cw.addContact")}
               </button>
+
+              {/* ── Kích hoạt mã QR trên thẻ vật lý (bắt buộc) ── */}
+              <div className="bg-white rounded-2xl shadow-card p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <QrCode size={18} className="text-[#4A8FE8]" />
+                  <p className="text-[16px] font-extrabold text-[#1A2332] font-display">
+                    {t("cw.tagTitle")} <span className="text-[#EF4444]">*</span>
+                  </p>
+                </div>
+                <p className="text-[13px] text-[#9BAABB] font-body mb-3">{t("cw.tagSub")}</p>
+
+                {scanning ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <QrScanner onResult={(text) => { setTagCode(extractTagCode(text)); setScanning(false); }} />
+                    <button type="button" onClick={() => setScanning(false)} className="flex items-center gap-2 text-[14px] font-bold text-[#EF4444] font-display">
+                      <X size={16} /> {t("scan.stopCamera")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={tagCode}
+                      onChange={(e) => setTagCode(e.target.value.toUpperCase())}
+                      placeholder={t("tags.codePlaceholder")}
+                      aria-label="Tag code"
+                      className="flex-1 h-[52px] px-[18px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.15)] text-[15px] text-[#1A2332] font-mono uppercase tracking-wide outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setScanning(true)}
+                      aria-label={t("cw.tagScan")}
+                      className="px-4 h-[52px] rounded-2xl gradient-brand text-white flex items-center justify-center gap-2 font-bold text-[13px] font-display shadow-cta active:scale-95"
+                    >
+                      <Camera size={18} /> {t("cw.tagScan")}
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="rounded-2xl bg-gradient-to-br from-[#EEF5FF] to-[#EDF7F2] p-5">
                 <p className="text-[16px] font-extrabold text-[#4A8FE8] font-display mb-3">🎉 {t("cw.almostDone")}</p>

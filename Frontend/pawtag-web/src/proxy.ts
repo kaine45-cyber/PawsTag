@@ -6,8 +6,7 @@ const PROTECTED = ["/dashboard", "/pet", "/scan", "/notifications", "/profile", 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
-  // Auth check will be done client-side (localStorage) — middleware just passes through for now
-  // When backend is integrated, check JWT cookie here
+  // Auth check is handled by the backend with the HttpOnly auth cookie.
   if (isProtected) {
     return NextResponse.next();
   }

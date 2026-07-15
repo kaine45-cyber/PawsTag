@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Check, ArrowRight } from "lucide-react";
 import { authService } from "@/services/auth.service";
+import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/LanguageContext";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 const CORGI = "/images/corgi.jpg";
 
@@ -31,6 +34,8 @@ const inputClass =
 
 export default function RegisterPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const { loginWithGoogle } = useAuth();
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -64,13 +69,26 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      const { token } = await authService.register(name, email, password, phone || undefined);
-      localStorage.setItem("pawtag_token", token);
+      await authService.register(name, email, password, phone || undefined);
       setStep(3);
     } catch {
       setError(t("rg.failed"));
       setStep(1);
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogle(credential: string) {
+    setError("");
+    setLoading(true);
+    try {
+      await loginWithGoogle(credential);
+      router.replace("/pet/create");
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || t("rg.googleFailed"));
+      setStep(1);
       setLoading(false);
     }
   }
@@ -159,11 +177,8 @@ export default function RegisterPage() {
             </div>
 
             {/* Social */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              <button type="button" onClick={() => setError(t("rg.socialSoon"))} className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95">
-                <span className="text-[18px]">🌐</span>
-                <span className="text-[13px] font-semibold text-[#1A2332] font-body">{t("rg.google")}</span>
-              </button>
+            <div className="flex flex-col gap-3 mb-5">
+              <GoogleSignInButton onCredential={handleGoogle} onError={() => setError(t("rg.googleFailed"))} text="signup_with" />
               <button type="button" onClick={() => setError(t("rg.socialSoon"))} className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95">
                 <span className="text-[18px]">📘</span>
                 <span className="text-[13px] font-semibold text-[#1A2332] font-body">{t("rg.facebook")}</span>

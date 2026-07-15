@@ -12,9 +12,17 @@ import type { AuthContextType, User, Pet } from "@/types";
 import { authService } from "@/services/auth.service";
 import { petService } from "@/services/pet.service";
 
-const TOKEN_KEY = "pawtag_token";
+const LEGACY_TOKEN_KEY = "pawtag_token";
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function clearLegacyToken() {
+  try {
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch {
+    // localStorage can be unavailable in restricted browser modes.
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -30,16 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Rehydrate session từ JWT
+  // Rehydrate session from the HttpOnly auth cookie.
   useEffect(() => {
     let active = true;
 
     async function rehydrate() {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) {
-        if (active) setIsLoading(false);
-        return;
-      }
+      clearLegacyToken();
       try {
         const me = await authService.me();
         if (!active) return;
@@ -47,7 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoggedIn(true);
         await loadPets();
       } catch {
-        localStorage.removeItem(TOKEN_KEY);
+        if (!active) return;
+        setUser(null);
+        setPets([]);
+        setIsLoggedIn(false);
       } finally {
         if (active) setIsLoading(false);
       }
@@ -58,24 +65,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadPets]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { token, owner } = await authService.login(email, password);
-    localStorage.setItem(TOKEN_KEY, token);
+    const { owner } = await authService.login(email, password);
     setUser(owner);
     setIsLoggedIn(true);
     await loadPets();
   }, [loadPets]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    const { token, owner } = await authService.register(name, email, password);
-    localStorage.setItem(TOKEN_KEY, token);
+    const { owner } = await authService.register(name, email, password);
     setUser(owner);
     setIsLoggedIn(true);
-    setPets([]); // tài khoản mới chưa có pet
+    setPets([]);
   }, []);
+
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const { owner } = await authService.googleLogin(credential);
+    setUser(owner);
+    setIsLoggedIn(true);
+    await loadPets();
+  }, [loadPets]);
 
   const logout = useCallback(() => {
     authService.logout();
-    localStorage.removeItem(TOKEN_KEY);
+    clearLegacyToken();
     setUser(null);
     setPets([]);
     setIsLoggedIn(false);
@@ -83,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isLoggedIn, isLoading, user, pets, login, register, logout, refreshPets: loadPets, setUser }}
+      value={{ isLoggedIn, isLoading, user, pets, login, register, loginWithGoogle, logout, refreshPets: loadPets, setUser }}
     >
       {children}
     </AuthContext.Provider>

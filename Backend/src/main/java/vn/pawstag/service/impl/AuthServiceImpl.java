@@ -3,6 +3,7 @@ package vn.pawstag.service.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,10 @@ import vn.pawstag.security.LoginAttemptService;
 import vn.pawstag.security.PasswordResetService;
 import vn.pawstag.service.AuthService;
 import vn.pawstag.service.EmailService;
+
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -109,7 +114,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public AuthSession googleLogin(GoogleLoginRequest request) {
         // 1) Verify credential VỚI GOOGLE (chữ ký + aud + iss + exp) — không tin frontend decode.
         GoogleTokenVerifier.Account acc = googleTokenVerifier.verify(request.credential());
@@ -118,21 +122,18 @@ public class AuthServiceImpl implements AuthService {
         }
         String email = acc.email().trim().toLowerCase();
 
-        // 2) Định danh chính = Google sub (google_id).
-        Owner owner = ownerRepository.findByGoogleId(acc.sub()).orElse(null);
-
-        if (owner == null) {
-            // Chưa có theo google_id → thử theo email (đã verified) để LINK vào owner sẵn có.
-            owner = ownerRepository.findByEmail(email).orElse(null);
-            if (owner != null) {
-                owner.setGoogleId(acc.sub());
-                if (owner.getAvatarUrl() == null) owner.setAvatarUrl(acc.picture());
-                if (owner.getFullName() == null) owner.setFullName(acc.name());
-                // KHÔNG đụng passwordHash hiện có.
-                owner = ownerRepository.save(owner);
-            } else {
-                // Email chưa tồn tại → tạo owner mới bằng Google.
-                owner = ownerRepository.save(Owner.builder()
+        // 2) Định danh chính = Google sub (google_id); fallback link theo email đã verified.
+        Owner owner = findOrCreateSocialOwner(
+                () -> ownerRepository.findByGoogleId(acc.sub()),
+                email,
+                existing -> {
+                    existing.setGoogleId(acc.sub());
+                    if (existing.getAvatarUrl() == null) existing.setAvatarUrl(acc.picture());
+                    if (existing.getFullName() == null) existing.setFullName(acc.name());
+                    // KHÔNG đụng passwordHash hiện có.
+                    return existing;
+                },
+                () -> Owner.builder()
                         .email(email)
                         .fullName(acc.name())
                         .avatarUrl(acc.picture())
@@ -141,12 +142,42 @@ public class AuthServiceImpl implements AuthService {
                         .passwordHash(null)
                         .role("USER")
                         .build());
-            }
-        }
 
         // 3) Tạo session PawsTag (cookie HttpOnly set ở controller, không trả token trong JSON).
         String token = jwtService.generateToken(owner);
         return new AuthSession(token, OwnerResponse.from(owner));
+    }
+
+    /**
+     * Tìm-hoặc-tạo owner cho social login (Google/Facebook), chống race khi 2 request
+     * đầu tiên của cùng tài khoản chạy song song: bên thua unique constraint
+     * (google_id/facebook_id/email) sẽ đọc lại bản ghi bên kia vừa tạo thay vì trả 500.
+     *
+     * CHỦ Ý không có @Transactional bao ngoài: mỗi thao tác repository tự có transaction
+     * riêng, nhờ vậy DataIntegrityViolationException nổi lên ngay tại save (không phải
+     * lúc commit) và lần đọc lại sau đó không dính transaction rollback-only.
+     *
+     * @param byProviderId lookup theo định danh provider (google_id/facebook_id)
+     * @param email        email đã verify từ provider — null nếu provider không trả (Facebook)
+     * @param linkExisting gắn định danh provider vào owner sẵn có tìm thấy theo email
+     * @param createNew    dựng owner mới khi chưa có ai khớp
+     */
+    private Owner findOrCreateSocialOwner(Supplier<Optional<Owner>> byProviderId,
+                                          String email,
+                                          UnaryOperator<Owner> linkExisting,
+                                          Supplier<Owner> createNew) {
+        Owner owner = byProviderId.get().orElse(null);
+        if (owner != null) return owner;
+
+        try {
+            Owner byEmail = (email != null) ? ownerRepository.findByEmail(email).orElse(null) : null;
+            return ownerRepository.save(byEmail != null ? linkExisting.apply(byEmail) : createNew.get());
+        } catch (DataIntegrityViolationException e) {
+            // Request song song đã tạo/link trước → dùng bản ghi đã có.
+            return byProviderId.get()
+                    .or(() -> email != null ? ownerRepository.findByEmail(email) : Optional.empty())
+                    .orElseThrow(() -> e);
+        }
     }
 
     @Override

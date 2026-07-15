@@ -33,16 +33,16 @@ public class HealthRecordServiceImpl implements HealthRecordService {
 
     @Override
     @Transactional
-    public void addVaccination(String ownerEmail, Long petId, VaccinationRequest req) {
-        Pet pet = requirePet(ownerEmail, petId);
+    public void addVaccination(String ownerPrincipal, Long petId, VaccinationRequest req) {
+        Pet pet = requirePet(ownerPrincipal, petId);
         vaccinationRepository.save(Vaccination.builder()
                 .pet(pet).name(req.name()).givenDate(req.givenDate()).dueDate(req.dueDate()).build());
     }
 
     @Override
     @Transactional
-    public void deleteVaccination(String ownerEmail, Long petId, Long vaccinationId) {
-        requirePet(ownerEmail, petId);
+    public void deleteVaccination(String ownerPrincipal, Long petId, Long vaccinationId) {
+        requirePet(ownerPrincipal, petId);
         Vaccination v = vaccinationRepository.findByIdAndPet_Id(vaccinationId, petId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vaccination not found"));
         vaccinationRepository.delete(v);
@@ -50,23 +50,23 @@ public class HealthRecordServiceImpl implements HealthRecordService {
 
     @Override
     @Transactional
-    public void addVetVisit(String ownerEmail, Long petId, VetVisitRequest req) {
-        Pet pet = requirePet(ownerEmail, petId);
+    public void addVetVisit(String ownerPrincipal, Long petId, VetVisitRequest req) {
+        Pet pet = requirePet(ownerPrincipal, petId);
         vetVisitRepository.save(VetVisit.builder()
                 .pet(pet).vetName(req.vetName()).clinic(req.clinic()).note(req.note()).visitDate(req.visitDate()).build());
     }
 
     @Override
     @Transactional
-    public void deleteVetVisit(String ownerEmail, Long petId, Long visitId) {
-        requirePet(ownerEmail, petId);
+    public void deleteVetVisit(String ownerPrincipal, Long petId, Long visitId) {
+        requirePet(ownerPrincipal, petId);
         VetVisit v = vetVisitRepository.findByIdAndPet_Id(visitId, petId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vet visit not found"));
         vetVisitRepository.delete(v);
     }
 
-    private Pet requirePet(String ownerEmail, Long petId) {
-        Owner owner = ownerRepository.findByEmail(ownerEmail)
+    private Pet requirePet(String ownerPrincipal, Long petId) {
+        Owner owner = ownerRepository.findByPrincipal(ownerPrincipal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
         return petRepository.findByIdAndOwnerId(petId, owner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet not found"));

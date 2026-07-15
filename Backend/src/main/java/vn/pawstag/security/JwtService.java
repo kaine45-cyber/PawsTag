@@ -12,7 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
- * Phát hành và xác thực JWT (HS256). Subject = email; kèm claim ownerId, role.
+ * Phát hành và xác thực JWT (HS256). Subject = ownerId; kèm claim ownerId, role.
+ * (Trước đây subject = email — extractOwnerId vẫn đọc được token cũ qua claim ownerId.)
  */
 @Service
 public class JwtService {
@@ -31,7 +32,7 @@ public class JwtService {
         Date now = new Date();
         Date exp = new Date(now.getTime() + expirationMs);
         return Jwts.builder()
-                .subject(owner.getEmail())
+                .subject(String.valueOf(owner.getId()))
                 .claim("ownerId", owner.getId())
                 .claim("role", owner.getRole())
                 .issuedAt(now)
@@ -40,8 +41,19 @@ public class JwtService {
                 .compact();
     }
 
-    public String extractEmail(String token) {
-        return parse(token).getSubject();
+    /**
+     * Lấy ownerId (dạng chuỗi số) từ token. Token mới: subject = ownerId.
+     * Token cũ (subject = email, phát hành trước khi đổi): fallback về claim ownerId
+     * để session đang hoạt động không bị logout.
+     */
+    public String extractOwnerId(String token) {
+        Claims claims = parse(token);
+        String sub = claims.getSubject();
+        if (sub != null && !sub.isEmpty() && sub.chars().allMatch(Character::isDigit)) {
+            return sub;
+        }
+        Object legacy = claims.get("ownerId");
+        return legacy == null ? null : String.valueOf(legacy);
     }
 
     public boolean isValid(String token) {

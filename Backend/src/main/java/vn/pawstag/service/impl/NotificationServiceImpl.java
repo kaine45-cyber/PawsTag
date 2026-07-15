@@ -56,16 +56,16 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<NotificationResponse> list(String ownerEmail) {
-        Owner owner = requireOwner(ownerEmail);
+    public List<NotificationResponse> list(String ownerPrincipal) {
+        Owner owner = requireOwner(ownerPrincipal);
         return notificationRepository.findByOwnerIdOrderByCreatedAtDesc(owner.getId())
                 .stream().map(NotificationResponse::from).toList();
     }
 
     @Override
     @Transactional
-    public NotificationResponse markRead(String ownerEmail, Long id) {
-        Owner owner = requireOwner(ownerEmail);
+    public NotificationResponse markRead(String ownerPrincipal, Long id) {
+        Owner owner = requireOwner(ownerPrincipal);
         Notification n = notificationRepository.findByIdAndOwnerId(id, owner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         n.setRead(true);
@@ -74,20 +74,20 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public int markAllRead(String ownerEmail) {
-        Owner owner = requireOwner(ownerEmail);
+    public int markAllRead(String ownerPrincipal) {
+        Owner owner = requireOwner(ownerPrincipal);
         return notificationRepository.markAllRead(owner.getId());
     }
 
     @Override
     @Transactional
-    public long clearAll(String ownerEmail) {
-        Owner owner = requireOwner(ownerEmail);
+    public long clearAll(String ownerPrincipal) {
+        Owner owner = requireOwner(ownerPrincipal);
         return notificationRepository.deleteByOwnerId(owner.getId());
     }
 
-    private Owner requireOwner(String email) {
-        return ownerRepository.findByEmail(email)
+    private Owner requireOwner(String principal) {
+        return ownerRepository.findByPrincipal(principal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
     }
 }

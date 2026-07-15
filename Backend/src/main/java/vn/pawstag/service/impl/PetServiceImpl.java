@@ -43,7 +43,7 @@ public class PetServiceImpl implements PetService {
 
     @Override
     @Transactional
-    public PetResponse create(String ownerEmail, PetRequest request) {
+    public PetResponse create(String ownerPrincipal, PetRequest request) {
         // Mô hình "QR in trước, kích hoạt sau": pet PHẢI kèm mã QR (public_code) của thẻ vật lý.
         // KHÔNG tự sinh mã mới. Validate ở đây vì PetRequest dùng chung cho create + update.
         String publicCode = request.publicCode();
@@ -51,7 +51,7 @@ public class PetServiceImpl implements PetService {
             throw new BadRequestException("Mã QR (publicCode) là bắt buộc khi tạo thú cưng");
         }
 
-        Owner owner = requireOwner(ownerEmail);
+        Owner owner = requireOwner(ownerPrincipal);
         Pet pet = new Pet();
         pet.setOwner(owner);
         petMapper.apply(pet, request);
@@ -65,29 +65,29 @@ public class PetServiceImpl implements PetService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PetResponse> list(String ownerEmail) {
-        Owner owner = requireOwner(ownerEmail);
+    public List<PetResponse> list(String ownerPrincipal) {
+        Owner owner = requireOwner(ownerPrincipal);
         return petMapper.toResponseBatch(petRepository.findByOwnerIdOrderByCreatedAtDesc(owner.getId()));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PetResponse get(String ownerEmail, Long petId) {
-        return petMapper.toResponse(requirePet(ownerEmail, petId));
+    public PetResponse get(String ownerPrincipal, Long petId) {
+        return petMapper.toResponse(requirePet(ownerPrincipal, petId));
     }
 
     @Override
     @Transactional
-    public PetResponse update(String ownerEmail, Long petId, PetRequest request) {
-        Pet pet = requirePet(ownerEmail, petId);
+    public PetResponse update(String ownerPrincipal, Long petId, PetRequest request) {
+        Pet pet = requirePet(ownerPrincipal, petId);
         petMapper.apply(pet, request);
         return petMapper.toResponse(petRepository.save(pet));
     }
 
     @Override
     @Transactional
-    public void delete(String ownerEmail, Long petId) {
-        Pet pet = requirePet(ownerEmail, petId);
+    public void delete(String ownerPrincipal, Long petId) {
+        Pet pet = requirePet(ownerPrincipal, petId);
         // Thu hồi tag về UNASSIGNED (gỡ pet_id) để tránh vướng FK khi xoá pet.
         // RỦI RO LỊCH SỬ: scan_logs vẫn trỏ tới tag này. Khi tag được kích hoạt lại
         // cho pet khác, lịch sử quét cũ sẽ lẫn giữa 2 pet. Chưa xử lý — giữ logic hiện tại
@@ -99,8 +99,8 @@ public class PetServiceImpl implements PetService {
 
     @Override
     @Transactional
-    public PetResponse setPhoto(String ownerEmail, Long petId, MultipartFile file) {
-        Pet pet = requirePet(ownerEmail, petId);
+    public PetResponse setPhoto(String ownerPrincipal, Long petId, MultipartFile file) {
+        Pet pet = requirePet(ownerPrincipal, petId);
         String url = storageService.store(file, "pets");
         pet.setPhotoUrl(url);
         return petMapper.toResponse(petRepository.save(pet));
@@ -108,8 +108,8 @@ public class PetServiceImpl implements PetService {
 
     @Override
     @Transactional
-    public PetResponse setLostMode(String ownerEmail, Long petId, LostModeRequest request) {
-        Pet pet = requirePet(ownerEmail, petId);
+    public PetResponse setLostMode(String ownerPrincipal, Long petId, LostModeRequest request) {
+        Pet pet = requirePet(ownerPrincipal, petId);
         boolean nowLost = Boolean.TRUE.equals(request.isLost());
         pet.setLost(nowLost);
         pet.setLostMessage(request.lostMessage());
@@ -120,13 +120,13 @@ public class PetServiceImpl implements PetService {
     }
 
     // ── helpers ──
-    private Owner requireOwner(String email) {
-        return ownerRepository.findByEmail(email)
+    private Owner requireOwner(String principal) {
+        return ownerRepository.findByPrincipal(principal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
     }
 
-    private Pet requirePet(String ownerEmail, Long petId) {
-        Owner owner = requireOwner(ownerEmail);
+    private Pet requirePet(String ownerPrincipal, Long petId) {
+        Owner owner = requireOwner(ownerPrincipal);
         return petRepository.findByIdAndOwnerId(petId, owner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet not found"));
     }

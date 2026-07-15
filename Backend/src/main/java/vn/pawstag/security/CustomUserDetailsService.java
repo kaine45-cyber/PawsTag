@@ -12,7 +12,8 @@ import vn.pawstag.repository.OwnerRepository;
 import java.util.List;
 
 /**
- * Nạp UserDetails theo email cho Spring Security.
+ * Nạp UserDetails theo principal (= owner id từ JWT subject) cho Spring Security.
+ * Không key theo email — email có thể null với tài khoản Facebook.
  * Mật khẩu rỗng nếu là tài khoản OAuth (không đăng nhập bằng password).
  */
 @Service
@@ -25,12 +26,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Owner owner = ownerRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Owner not found: " + email));
+    public UserDetails loadUserByUsername(String principal) throws UsernameNotFoundException {
+        Owner owner = ownerRepository.findByPrincipal(principal)
+                .orElseThrow(() -> new UsernameNotFoundException("Owner not found: " + principal));
 
         return new User(
-                owner.getEmail(),
+                String.valueOf(owner.getId()),
                 owner.getPasswordHash() != null ? owner.getPasswordHash() : "",
                 List.of(new SimpleGrantedAuthority("ROLE_" + owner.getRole()))
         );

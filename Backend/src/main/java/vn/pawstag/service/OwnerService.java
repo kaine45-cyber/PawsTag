@@ -8,10 +8,10 @@ import vn.pawstag.dto.response.NotificationPrefsResponse;
 import vn.pawstag.dto.response.OwnerResponse;
 
 public interface OwnerService {
-    OwnerResponse getMe(String email);
-    OwnerResponse update(String email, OwnerUpdateRequest request);
-    OwnerResponse setAvatar(String email, MultipartFile file);
-    void changePassword(String email, ChangePasswordRequest request);
-    NotificationPrefsResponse getNotifPrefs(String email);
-    NotificationPrefsResponse updateNotifPrefs(String email, NotificationPrefsRequest request);
+    OwnerResponse getMe(String principal);
+    OwnerResponse update(String principal, OwnerUpdateRequest request);
+    OwnerResponse setAvatar(String principal, MultipartFile file);
+    void changePassword(String principal, ChangePasswordRequest request);
+    NotificationPrefsResponse getNotifPrefs(String principal);
+    NotificationPrefsResponse updateNotifPrefs(String principal, NotificationPrefsRequest request);
 }

@@ -108,8 +108,8 @@ public class ScanServiceImpl implements ScanService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ScanLogResponse> history(String ownerEmail, Long petId) {
-        Owner owner = ownerRepository.findByEmail(ownerEmail)
+    public List<ScanLogResponse> history(String ownerPrincipal, Long petId) {
+        Owner owner = ownerRepository.findByPrincipal(ownerPrincipal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
         List<ScanLog> logs = (petId != null)
                 ? scanLogRepository.findByTag_Pet_IdAndTag_Pet_Owner_IdOrderByScannedAtDesc(petId, owner.getId())

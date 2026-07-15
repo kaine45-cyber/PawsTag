@@ -54,8 +54,8 @@ public class PassportServiceImpl implements PassportService {
 
     @Override
     @Transactional(readOnly = true)
-    public PassportResponse getPassport(String ownerEmail, Long petId) {
-        Owner owner = ownerRepository.findByEmail(ownerEmail)
+    public PassportResponse getPassport(String ownerPrincipal, Long petId) {
+        Owner owner = ownerRepository.findByPrincipal(ownerPrincipal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
         Pet p = petRepository.findByIdAndOwnerId(petId, owner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet not found"));

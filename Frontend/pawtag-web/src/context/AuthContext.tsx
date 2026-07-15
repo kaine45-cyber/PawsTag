@@ -85,6 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadPets();
   }, [loadPets]);
 
+  const loginWithFacebook = useCallback(async (accessToken: string) => {
+    const { owner } = await authService.facebookLogin(accessToken);
+    setUser(owner);
+    setIsLoggedIn(true);
+    await loadPets();
+  }, [loadPets]);
+
   const logout = useCallback(() => {
     authService.logout();
     clearLegacyToken();
@@ -95,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isLoggedIn, isLoading, user, pets, login, register, loginWithGoogle, logout, refreshPets: loadPets, setUser }}
+      value={{ isLoggedIn, isLoading, user, pets, login, register, loginWithGoogle, loginWithFacebook, logout, refreshPets: loadPets, setUser }}
     >
       {children}
     </AuthContext.Provider>

@@ -8,9 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/LanguageContext";
 import { ROUTES } from "@/constants/routes";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import FacebookSignInButton from "@/components/auth/FacebookSignInButton";
 
 export default function LoginPage() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
   const { t }     = useI18n();
   const router    = useRouter();
 
@@ -45,6 +46,19 @@ export default function LoginPage() {
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg || t("lg.googleFailed"));
+      setLoading(false);
+    }
+  }
+
+  async function handleFacebook(accessToken: string) {
+    setError("");
+    setLoading(true);
+    try {
+      await loginWithFacebook(accessToken);
+      router.replace("/dashboard");
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || t("lg.facebookFailed"));
       setLoading(false);
     }
   }
@@ -94,14 +108,7 @@ export default function LoginPage() {
           {/* Social */}
           <div className="flex flex-col gap-3">
             <GoogleSignInButton onCredential={handleGoogle} onError={() => setError(t("lg.googleFailed"))} text="signin_with" />
-            <button
-              type="button"
-              onClick={() => setError(t("lg.socialSoon"))}
-              className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95"
-            >
-              <span className="text-[18px]">📘</span>
-              <span className="text-[14px] font-semibold text-[#1A2332] font-body">Facebook</span>
-            </button>
+            <FacebookSignInButton onToken={handleFacebook} onError={() => setError(t("lg.facebookFailed"))} label="Facebook" />
           </div>
 
           <div className="flex items-center gap-3">

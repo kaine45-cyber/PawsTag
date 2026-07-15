@@ -13,6 +13,7 @@ import vn.pawstag.entity.Owner;
 import vn.pawstag.enums.AuthProvider;
 import vn.pawstag.exception.BadRequestException;
 import vn.pawstag.repository.OwnerRepository;
+import vn.pawstag.security.FacebookTokenVerifier;
 import vn.pawstag.security.GoogleTokenVerifier;
 import vn.pawstag.security.GoogleTokenVerifier.Account;
 import vn.pawstag.security.JwtService;
@@ -44,6 +45,7 @@ class AuthServiceGoogleTest {
     @Mock PasswordResetService passwordResetService;
     @Mock EmailService emailService;
     @Mock GoogleTokenVerifier googleTokenVerifier;
+    @Mock FacebookTokenVerifier facebookTokenVerifier;
 
     AuthServiceImpl service;
 
@@ -54,7 +56,7 @@ class AuthServiceGoogleTest {
     @BeforeEach
     void setUp() {
         service = new AuthServiceImpl(ownerRepository, passwordEncoder, jwtService,
-                loginAttemptService, passwordResetService, emailService, googleTokenVerifier, 10);
+                loginAttemptService, passwordResetService, emailService, googleTokenVerifier, facebookTokenVerifier, 10);
         // Chỉ các test thành công mới gọi generateToken → lenient để 2 test reject không bị strict-stubbing.
         lenient().when(jwtService.generateToken(any(Owner.class))).thenReturn("jwt");
     }

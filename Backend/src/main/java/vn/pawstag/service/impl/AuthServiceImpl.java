@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.pawstag.dto.request.FacebookLoginRequest;
 import vn.pawstag.dto.request.ForgotPasswordRequest;
 import vn.pawstag.dto.request.GoogleLoginRequest;
 import vn.pawstag.dto.request.LoginRequest;
@@ -21,6 +22,7 @@ import vn.pawstag.exception.EmailDeliveryException;
 import vn.pawstag.exception.OtpCooldownException;
 import vn.pawstag.exception.TooManyAttemptsException;
 import vn.pawstag.repository.OwnerRepository;
+import vn.pawstag.security.FacebookTokenVerifier;
 import vn.pawstag.security.GoogleTokenVerifier;
 import vn.pawstag.security.JwtService;
 import vn.pawstag.security.LoginAttemptService;
@@ -44,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetService passwordResetService;
     private final EmailService emailService;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final FacebookTokenVerifier facebookTokenVerifier;
     private final int otpExpiryMinutes;
 
     public AuthServiceImpl(OwnerRepository ownerRepository,
@@ -53,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
                            PasswordResetService passwordResetService,
                            EmailService emailService,
                            GoogleTokenVerifier googleTokenVerifier,
+                           FacebookTokenVerifier facebookTokenVerifier,
                            @Value("${app.otp.expiry-minutes:10}") int otpExpiryMinutes) {
         this.ownerRepository = ownerRepository;
         this.passwordEncoder = passwordEncoder;
@@ -61,6 +65,7 @@ public class AuthServiceImpl implements AuthService {
         this.passwordResetService = passwordResetService;
         this.emailService = emailService;
         this.googleTokenVerifier = googleTokenVerifier;
+        this.facebookTokenVerifier = facebookTokenVerifier;
         this.otpExpiryMinutes = otpExpiryMinutes;
     }
 
@@ -144,6 +149,42 @@ public class AuthServiceImpl implements AuthService {
                         .build());
 
         // 3) Tạo session PawsTag (cookie HttpOnly set ở controller, không trả token trong JSON).
+        String token = jwtService.generateToken(owner);
+        return new AuthSession(token, OwnerResponse.from(owner));
+    }
+
+    @Override
+    public AuthSession facebookLogin(FacebookLoginRequest request) {
+        // 1) Verify access token VỚI GRAPH API (debug_token + appsecret_proof) — không tin frontend.
+        FacebookTokenVerifier.Account acc = facebookTokenVerifier.verify(request.accessToken());
+        // Facebook có thể KHÔNG trả email (đăng ký bằng SĐT / từ chối quyền) → chấp nhận email null.
+        // Email FB trả về đã được Facebook verify nên link theo email là an toàn.
+        String email = (acc.email() == null || acc.email().isBlank())
+                ? null
+                : acc.email().trim().toLowerCase();
+
+        // 2) Định danh chính = Facebook user id (facebook_id); fallback link theo email nếu có.
+        Owner owner = findOrCreateSocialOwner(
+                () -> ownerRepository.findByFacebookId(acc.id()),
+                email,
+                existing -> {
+                    existing.setFacebookId(acc.id());
+                    if (existing.getAvatarUrl() == null) existing.setAvatarUrl(acc.picture());
+                    if (existing.getFullName() == null) existing.setFullName(acc.name());
+                    // KHÔNG đụng passwordHash hiện có.
+                    return existing;
+                },
+                () -> Owner.builder()
+                        .email(email) // có thể null — user không email không dùng được forgot-password
+                        .fullName(acc.name())
+                        .avatarUrl(acc.picture())
+                        .facebookId(acc.id())
+                        .authProvider(AuthProvider.FACEBOOK)
+                        .passwordHash(null)
+                        .role("USER")
+                        .build());
+
+        // 3) Tạo session PawsTag (cookie HttpOnly set ở controller).
         String token = jwtService.generateToken(owner);
         return new AuthSession(token, OwnerResponse.from(owner));
     }

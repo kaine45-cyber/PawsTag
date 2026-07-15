@@ -1,5 +1,6 @@
 package vn.pawstag.service;
 
+import vn.pawstag.dto.request.FacebookLoginRequest;
 import vn.pawstag.dto.request.ForgotPasswordRequest;
 import vn.pawstag.dto.request.GoogleLoginRequest;
 import vn.pawstag.dto.request.LoginRequest;
@@ -13,6 +14,9 @@ public interface AuthService {
 
     /** Đăng nhập/đăng ký bằng Google ID token (verify với Google, tìm/link/tạo owner). */
     AuthSession googleLogin(GoogleLoginRequest request);
+
+    /** Đăng nhập/đăng ký bằng Facebook access token (verify Graph API; email có thể null). */
+    AuthSession facebookLogin(FacebookLoginRequest request);
 
     /** Gửi mã OTP về email nếu tài khoản tồn tại. Luôn "thành công" ở phía client (chống dò email). */
     int forgotPassword(ForgotPasswordRequest request);

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import vn.pawstag.dto.request.FacebookLoginRequest;
 import vn.pawstag.dto.request.ForgotPasswordRequest;
 import vn.pawstag.dto.request.GoogleLoginRequest;
 import vn.pawstag.dto.request.LoginRequest;
@@ -90,10 +91,10 @@ public class AuthController {
     }
 
     @PostMapping("/facebook")
-    @Operation(summary = "Facebook login placeholder")
-    public ResponseEntity<ApiResponse<Void>> facebook() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-                .body(ApiResponse.error("Facebook login not implemented yet"));
+    @Operation(summary = "Login/Register with a Facebook access token")
+    public ResponseEntity<ApiResponse<AuthResponse>> facebook(@Valid @RequestBody FacebookLoginRequest request,
+                                                              HttpServletRequest http) {
+        return authenticated(authService.facebookLogin(request), "Logged in", HttpStatus.OK, http);
     }
 
     private ResponseEntity<ApiResponse<AuthResponse>> authenticated(AuthSession session,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import api from "@/lib/axios";
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const GSI_SRC = "https://accounts.google.com/gsi/client";
@@ -14,6 +15,7 @@ declare global {
             client_id: string;
             callback: (resp: { credential?: string }) => void;
             ux_mode?: "popup" | "redirect";
+            nonce?: string;
           }) => void;
           renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
         };
@@ -64,15 +66,19 @@ export default function GoogleSignInButton({ onCredential, onError, text = "cont
   useEffect(() => {
     if (!CLIENT_ID) return;
     let cancelled = false;
-    loadGsi()
-      .then(() => {
+    // Nonce chống replay: backend phát (single-use), GIS nhúng vào claim "nonce"
+    // của credential, backend đối chiếu khi POST /auth/google.
+    Promise.all([loadGsi(), api.get("/auth/google/nonce")])
+      .then(([, nonceRes]) => {
         if (cancelled || !boxRef.current) return;
+        const nonce: string | undefined = nonceRes.data?.data?.nonce;
         const gid = window.google?.accounts?.id;
-        if (!gid) { setAvailable(false); return; }
+        if (!gid || !nonce) { setAvailable(false); return; }
         gid.initialize({
           client_id: CLIENT_ID,
           callback: (resp) => { if (resp.credential) cbRef.current(resp.credential); },
           ux_mode: "popup",
+          nonce,
         });
         boxRef.current.innerHTML = ""; // tránh nhân đôi nút khi StrictMode chạy effect 2 lần
         const width = Math.min(Math.max(boxRef.current.offsetWidth || 300, 200), 400);

@@ -16,6 +16,7 @@ import vn.pawstag.exception.OtpCooldownException;
 import vn.pawstag.exception.TooManyAttemptsException;
 import vn.pawstag.repository.OwnerRepository;
 import vn.pawstag.security.FacebookTokenVerifier;
+import vn.pawstag.security.GoogleNonceService;
 import vn.pawstag.security.GoogleTokenVerifier;
 import vn.pawstag.security.JwtService;
 import vn.pawstag.security.LoginAttemptService;
@@ -48,6 +49,7 @@ class AuthServiceOtpTest {
     @Mock PasswordResetService passwordResetService;
     @Mock EmailService emailService;
     @Mock GoogleTokenVerifier googleTokenVerifier;
+    @Mock GoogleNonceService googleNonceService;
     @Mock FacebookTokenVerifier facebookTokenVerifier;
 
     AuthServiceImpl service;
@@ -58,7 +60,8 @@ class AuthServiceOtpTest {
     @BeforeEach
     void setUp() {
         service = new AuthServiceImpl(ownerRepository, passwordEncoder, jwtService,
-                loginAttemptService, passwordResetService, emailService, googleTokenVerifier, facebookTokenVerifier, 10);
+                loginAttemptService, passwordResetService, emailService,
+                googleTokenVerifier, googleNonceService, facebookTokenVerifier, 10);
         lenient().when(passwordResetService.resendCooldownSeconds()).thenReturn(COOLDOWN_SECONDS);
     }
 

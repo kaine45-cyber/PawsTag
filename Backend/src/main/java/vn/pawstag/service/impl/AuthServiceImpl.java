@@ -23,6 +23,7 @@ import vn.pawstag.exception.OtpCooldownException;
 import vn.pawstag.exception.TooManyAttemptsException;
 import vn.pawstag.repository.OwnerRepository;
 import vn.pawstag.security.FacebookTokenVerifier;
+import vn.pawstag.security.GoogleNonceService;
 import vn.pawstag.security.GoogleTokenVerifier;
 import vn.pawstag.security.JwtService;
 import vn.pawstag.security.LoginAttemptService;
@@ -46,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetService passwordResetService;
     private final EmailService emailService;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final GoogleNonceService googleNonceService;
     private final FacebookTokenVerifier facebookTokenVerifier;
     private final int otpExpiryMinutes;
 
@@ -56,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
                            PasswordResetService passwordResetService,
                            EmailService emailService,
                            GoogleTokenVerifier googleTokenVerifier,
+                           GoogleNonceService googleNonceService,
                            FacebookTokenVerifier facebookTokenVerifier,
                            @Value("${app.otp.expiry-minutes:10}") int otpExpiryMinutes) {
         this.ownerRepository = ownerRepository;
@@ -65,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
         this.passwordResetService = passwordResetService;
         this.emailService = emailService;
         this.googleTokenVerifier = googleTokenVerifier;
+        this.googleNonceService = googleNonceService;
         this.facebookTokenVerifier = facebookTokenVerifier;
         this.otpExpiryMinutes = otpExpiryMinutes;
     }
@@ -124,6 +128,11 @@ public class AuthServiceImpl implements AuthService {
         GoogleTokenVerifier.Account acc = googleTokenVerifier.verify(request.credential());
         if (acc.email() == null || !acc.emailVerified()) {
             throw new BadRequestException("Google account email is not verified");
+        }
+        // Chống replay: nonce trong credential phải là nonce backend vừa phát và chưa dùng.
+        // (Consume sau các check trên để lần "email chưa verify" không đốt mất nonce của user.)
+        if (!googleNonceService.consume(acc.nonce())) {
+            throw new BadRequestException("Invalid Google token");
         }
         String email = acc.email().trim().toLowerCase();
 

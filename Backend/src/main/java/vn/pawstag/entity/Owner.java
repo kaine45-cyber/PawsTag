@@ -24,7 +24,8 @@ public class Owner {
     @Column(name = "owner_id")
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    /** Nullable: tài khoản Facebook có thể không có email (V14). Unique cho giá trị non-null. */
+    @Column(unique = true)
     private String email;
 
     private String phone;

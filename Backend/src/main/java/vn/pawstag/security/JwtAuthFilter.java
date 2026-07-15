@@ -2,6 +2,7 @@ package vn.pawstag.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
@@ -20,6 +21,8 @@ import java.io.IOException;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final String AUTH_COOKIE = "access_token";
+
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
 
@@ -34,13 +37,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        String header = request.getHeader("Authorization");
-        if (header == null || !header.startsWith("Bearer ")) {
+        String token = resolveToken(request);
+        if (token == null || token.isBlank()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = header.substring(7);
         try {
             if (jwtService.isValid(token)
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -56,5 +58,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String resolveToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
+        for (Cookie cookie : cookies) {
+            if (AUTH_COOKIE.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

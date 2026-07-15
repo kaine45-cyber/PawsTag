@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Eye, EyeOff, KeyRound, ArrowRight, CheckCircle2 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
@@ -8,6 +8,8 @@ import { authService } from "@/services/auth.service";
 import { useI18n } from "@/i18n/LanguageContext";
 
 type Step = "email" | "otp" | "done";
+
+const DEFAULT_COOLDOWN_SECONDS = 60;
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -19,9 +21,29 @@ export default function ForgotPasswordPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
 
-  const inputClass =
-    "w-full h-[52px] px-[18px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]";
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
+
+  function statusOf(e: unknown): number | undefined {
+    return (e as { response?: { status?: number } })?.response?.status;
+  }
+
+  function retryAfterOf(e: unknown): number {
+    const headers = (e as { response?: { headers?: Record<string, unknown> & { get?: (name: string) => unknown } } })?.response?.headers;
+    const raw = headers?.["retry-after"] ?? headers?.get?.("retry-after");
+    const retryAfter = Number(Array.isArray(raw) ? raw[0] : raw);
+    return Number.isFinite(retryAfter) && retryAfter > 0 ? Math.ceil(retryAfter) : DEFAULT_COOLDOWN_SECONDS;
+  }
+
+  function cooldownOf(data?: { resendCooldownSeconds?: number } | null): number {
+    const seconds = Number(data?.resendCooldownSeconds);
+    return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : DEFAULT_COOLDOWN_SECONDS;
+  }
 
   function errMsg(e: unknown, fallback: string): string {
     const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -34,10 +56,17 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      await authService.forgotPassword(email.trim());
+      const data = await authService.forgotPassword(email.trim());
       setStep("otp");
+      setCooldown(cooldownOf(data));
     } catch (err) {
-      setError(errMsg(err, t("fp.genericError")));
+      if (statusOf(err) === 429) {
+        setStep("otp");
+        setCooldown(retryAfterOf(err));
+        setError(t("fp.tooSoon"));
+      } else {
+        setError(errMsg(err, t("fp.genericError")));
+      }
     } finally {
       setLoading(false);
     }
@@ -52,16 +81,30 @@ export default function ForgotPasswordPage() {
       await authService.resetPassword(email.trim(), otp.trim(), newPassword);
       setStep("done");
     } catch (err) {
-      setError(errMsg(err, t("fp.invalidOtp")));
+      setError(statusOf(err) === 429 ? t("fp.tooManyAttempts") : errMsg(err, t("fp.invalidOtp")));
     } finally {
       setLoading(false);
     }
   }
 
   async function resend() {
+    if (cooldown > 0) return;
     setError("");
-    try { await authService.forgotPassword(email.trim()); } catch { /* im lặng, giữ nguyên OTP nhập dở */ }
+    try {
+      const data = await authService.forgotPassword(email.trim());
+      setCooldown(cooldownOf(data));
+    } catch (err) {
+      if (statusOf(err) === 429) {
+        setCooldown(retryAfterOf(err));
+        setError(t("fp.tooSoon"));
+      } else {
+        setError(errMsg(err, t("fp.genericError")));
+      }
+    }
   }
+
+  const inputClass =
+    "w-full h-[52px] px-[18px] rounded-2xl bg-[#F0F4FA] border border-[rgba(74,143,232,0.12)] text-[15px] text-[#1A2332] font-body outline-none focus:border-[#4A8FE8] focus:bg-white transition-all placeholder:text-[#9BAABB]";
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-[#EFF3FB] to-[#F7F9FC] flex flex-col px-5 pt-4 pb-8 overflow-hidden">
@@ -76,8 +119,6 @@ export default function ForgotPasswordPage() {
       </Link>
 
       <div className="relative z-10 max-w-sm mx-auto w-full flex flex-col mt-6">
-
-        {/* ── Step 1: enter email ── */}
         {step === "email" && (
           <>
             <div className="flex flex-col items-center mb-6">
@@ -118,7 +159,6 @@ export default function ForgotPasswordPage() {
           </>
         )}
 
-        {/* ── Step 2: enter OTP + new password ── */}
         {step === "otp" && (
           <>
             <div className="flex flex-col items-center mb-6">
@@ -181,14 +221,18 @@ export default function ForgotPasswordPage() {
                 )}
               </button>
 
-              <button type="button" onClick={resend} className="text-[14px] text-[#4A8FE8] font-bold font-display text-center">
-                {t("fp.resendCode")}
+              <button
+                type="button"
+                onClick={resend}
+                disabled={cooldown > 0}
+                className="text-[14px] text-[#4A8FE8] font-bold font-display text-center disabled:text-[#9BAABB] disabled:cursor-not-allowed"
+              >
+                {cooldown > 0 ? t("fp.resendIn").replace("{s}", String(cooldown)) : t("fp.resendCode")}
               </button>
             </form>
           </>
         )}
 
-        {/* ── Step 3: success ── */}
         {step === "done" && (
           <div className="bg-white rounded-3xl p-6 shadow-form flex flex-col items-center text-center gap-3">
             <div className="w-16 h-16 rounded-full bg-[#EDF7F2] flex items-center justify-center">

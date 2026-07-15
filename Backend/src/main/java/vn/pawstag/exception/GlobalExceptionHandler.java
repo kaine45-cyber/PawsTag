@@ -1,6 +1,7 @@
 package vn.pawstag.exception;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,7 +32,18 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TooManyAttemptsException.class)
     public ResponseEntity<ApiResponse<Void>> handleTooMany(TooManyAttemptsException ex) {
+        if (ex instanceof OtpCooldownException cooldown) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header(HttpHeaders.RETRY_AFTER, String.valueOf(cooldown.retryAfterSeconds()))
+                    .body(ApiResponse.error(ex.getMessage()));
+        }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(EmailDeliveryException.class)
+    public ResponseEntity<ApiResponse<Void>> handleEmailDelivery(EmailDeliveryException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 

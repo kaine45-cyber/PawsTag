@@ -62,11 +62,9 @@ export default function ScanProfilePage({ params }: Props) {
       }
     })();
     // Chủ pet (đã đăng nhập) → mở khoá "View Full Pet Passport"
-    if (typeof window !== "undefined" && localStorage.getItem("pawtag_token")) {
-      petService.getAll()
-        .then((pets) => { if (active) setIsOwner(pets.some((p) => p.tagCode?.toUpperCase() === code.toUpperCase())); })
-        .catch(() => {});
-    }
+    petService.getAll()
+      .then((pets) => { if (active) setIsOwner(pets.some((p) => p.tagCode?.toUpperCase() === code.toUpperCase())); })
+      .catch(() => {});
     return () => { active = false; };
   }, [code]);
 

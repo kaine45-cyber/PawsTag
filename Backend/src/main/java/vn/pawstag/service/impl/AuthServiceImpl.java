@@ -7,16 +7,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.pawstag.dto.request.ForgotPasswordRequest;
+import vn.pawstag.dto.request.GoogleLoginRequest;
 import vn.pawstag.dto.request.LoginRequest;
 import vn.pawstag.dto.request.RegisterRequest;
 import vn.pawstag.dto.request.ResetPasswordRequest;
-import vn.pawstag.dto.response.AuthResponse;
+import vn.pawstag.dto.response.AuthSession;
 import vn.pawstag.dto.response.OwnerResponse;
 import vn.pawstag.entity.Owner;
 import vn.pawstag.enums.AuthProvider;
 import vn.pawstag.exception.BadRequestException;
+import vn.pawstag.exception.EmailDeliveryException;
+import vn.pawstag.exception.OtpCooldownException;
 import vn.pawstag.exception.TooManyAttemptsException;
 import vn.pawstag.repository.OwnerRepository;
+import vn.pawstag.security.GoogleTokenVerifier;
 import vn.pawstag.security.JwtService;
 import vn.pawstag.security.LoginAttemptService;
 import vn.pawstag.security.PasswordResetService;
@@ -34,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final LoginAttemptService loginAttemptService;
     private final PasswordResetService passwordResetService;
     private final EmailService emailService;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final int otpExpiryMinutes;
 
     public AuthServiceImpl(OwnerRepository ownerRepository,
@@ -42,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
                            LoginAttemptService loginAttemptService,
                            PasswordResetService passwordResetService,
                            EmailService emailService,
+                           GoogleTokenVerifier googleTokenVerifier,
                            @Value("${app.otp.expiry-minutes:10}") int otpExpiryMinutes) {
         this.ownerRepository = ownerRepository;
         this.passwordEncoder = passwordEncoder;
@@ -49,12 +55,13 @@ public class AuthServiceImpl implements AuthService {
         this.loginAttemptService = loginAttemptService;
         this.passwordResetService = passwordResetService;
         this.emailService = emailService;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.otpExpiryMinutes = otpExpiryMinutes;
     }
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthSession register(RegisterRequest request) {
         String email = request.email().trim().toLowerCase();
         if (ownerRepository.existsByEmail(email)) {
             throw new BadRequestException("Email already registered");
@@ -71,12 +78,12 @@ public class AuthServiceImpl implements AuthService {
 
         Owner saved = ownerRepository.save(owner);
         String token = jwtService.generateToken(saved);
-        return new AuthResponse(token, OwnerResponse.from(saved));
+        return new AuthSession(token, OwnerResponse.from(saved));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest request) {
+    public AuthSession login(LoginRequest request) {
         String email = request.email().trim().toLowerCase();
 
         // Đang bị khóa do sai quá nhiều lần?
@@ -98,32 +105,86 @@ public class AuthServiceImpl implements AuthService {
 
         loginAttemptService.loginSucceeded(email);
         String token = jwtService.generateToken(owner);
-        return new AuthResponse(token, OwnerResponse.from(owner));
+        return new AuthSession(token, OwnerResponse.from(owner));
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public void forgotPassword(ForgotPasswordRequest request) {
+    @Transactional
+    public AuthSession googleLogin(GoogleLoginRequest request) {
+        // 1) Verify credential VỚI GOOGLE (chữ ký + aud + iss + exp) — không tin frontend decode.
+        GoogleTokenVerifier.Account acc = googleTokenVerifier.verify(request.credential());
+        if (acc.email() == null || !acc.emailVerified()) {
+            throw new BadRequestException("Google account email is not verified");
+        }
+        String email = acc.email().trim().toLowerCase();
+
+        // 2) Định danh chính = Google sub (google_id).
+        Owner owner = ownerRepository.findByGoogleId(acc.sub()).orElse(null);
+
+        if (owner == null) {
+            // Chưa có theo google_id → thử theo email (đã verified) để LINK vào owner sẵn có.
+            owner = ownerRepository.findByEmail(email).orElse(null);
+            if (owner != null) {
+                owner.setGoogleId(acc.sub());
+                if (owner.getAvatarUrl() == null) owner.setAvatarUrl(acc.picture());
+                if (owner.getFullName() == null) owner.setFullName(acc.name());
+                // KHÔNG đụng passwordHash hiện có.
+                owner = ownerRepository.save(owner);
+            } else {
+                // Email chưa tồn tại → tạo owner mới bằng Google.
+                owner = ownerRepository.save(Owner.builder()
+                        .email(email)
+                        .fullName(acc.name())
+                        .avatarUrl(acc.picture())
+                        .googleId(acc.sub())
+                        .authProvider(AuthProvider.GOOGLE)
+                        .passwordHash(null)
+                        .role("USER")
+                        .build());
+            }
+        }
+
+        // 3) Tạo session PawsTag (cookie HttpOnly set ở controller, không trả token trong JSON).
+        String token = jwtService.generateToken(owner);
+        return new AuthSession(token, OwnerResponse.from(owner));
+    }
+
+    @Override
+    @Transactional
+    public int forgotPassword(ForgotPasswordRequest request) {
         String email = request.email().trim().toLowerCase();
+        int cooldownSeconds = passwordResetService.resendCooldownSeconds();
         Owner owner = ownerRepository.findByEmail(email).orElse(null);
-        // Không tiết lộ email có tồn tại hay không — luôn "thành công" ở phía controller.
-        if (owner == null) return;
-        String otp = passwordResetService.generate(email);
+        // Không tiết lộ email có tồn tại hay không — controller luôn trả response chung chung.
+        if (owner == null) return cooldownSeconds;
+
+        PasswordResetService.IssueResult issue = passwordResetService.issue(email);
+        if (!issue.issued()) {
+            throw new OtpCooldownException(issue.retryAfterSeconds());
+        }
+
         try {
-            emailService.sendPasswordResetOtp(email, otp, otpExpiryMinutes);
+            emailService.sendPasswordResetOtp(email, issue.otp(), otpExpiryMinutes);
         } catch (Exception e) {
             log.error("Could not send password reset email to {}", email, e);
-            // Không throw ra ngoài — tránh lộ thông tin qua thông báo lỗi khác nhau.
+            throw new EmailDeliveryException("Could not send reset code. Please try again later.", e);
         }
+        return cooldownSeconds;
     }
 
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         String email = request.email().trim().toLowerCase();
-        if (!passwordResetService.verify(email, request.otp().trim())) {
+        PasswordResetService.OtpResult result = passwordResetService.verify(email, request.otp().trim());
+        if (result == PasswordResetService.OtpResult.TOO_MANY_ATTEMPTS) {
+            throw new TooManyAttemptsException("Too many incorrect attempts. Please request a new code.");
+        }
+        if (result != PasswordResetService.OtpResult.OK) {
             throw new BadRequestException("Invalid or expired code");
         }
+        // OTP hợp lệ → đặt mật khẩu local mới. Kể cả tài khoản Google/Facebook chưa có
+        // passwordHash cũng được đặt mật khẩu (chủ email đã xác thực qua OTP).
         Owner owner = ownerRepository.findByEmail(email)
                 .orElseThrow(() -> new BadRequestException("Invalid or expired code"));
         owner.setPasswordHash(passwordEncoder.encode(request.newPassword()));

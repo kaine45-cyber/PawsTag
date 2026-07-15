@@ -6,26 +6,12 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 const api = axios.create({
   baseURL: apiBaseUrl,
   timeout: 10_000,
+  withCredentials: true,
 });
 
-// Attach JWT to every browser request when available.
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("pawtag_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Clear invalid/expired token so the app can force a fresh login.
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
-    if (typeof window !== "undefined" && error?.response?.status === 401) {
-      localStorage.removeItem("pawtag_token");
-    }
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
 export default api;

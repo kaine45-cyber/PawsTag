@@ -7,9 +7,10 @@ import { ArrowLeft, Eye, EyeOff, PawPrint, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/LanguageContext";
 import { ROUTES } from "@/constants/routes";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { t }     = useI18n();
   const router    = useRouter();
 
@@ -31,6 +32,19 @@ export default function LoginPage() {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg || t("lg.invalid"));
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogle(credential: string) {
+    setError("");
+    setLoading(true);
+    try {
+      await loginWithGoogle(credential);
+      router.replace("/dashboard");
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || t("lg.googleFailed"));
       setLoading(false);
     }
   }
@@ -78,15 +92,8 @@ export default function LoginPage() {
         {/* Form card */}
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 shadow-form flex flex-col gap-4">
           {/* Social */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setError(t("lg.socialSoon"))}
-              className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95"
-            >
-              <span className="text-[18px]">🌐</span>
-              <span className="text-[14px] font-semibold text-[#1A2332] font-body">Google</span>
-            </button>
+          <div className="flex flex-col gap-3">
+            <GoogleSignInButton onCredential={handleGoogle} onError={() => setError(t("lg.googleFailed"))} text="signin_with" />
             <button
               type="button"
               onClick={() => setError(t("lg.socialSoon"))}

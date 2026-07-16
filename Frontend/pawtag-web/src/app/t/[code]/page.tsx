@@ -12,11 +12,11 @@ import { scanService } from "@/services/scan.service";
 import { petService } from "@/services/pet.service";
 import { shareOrCopy } from "@/lib/share";
 import { getCurrentCoords, GeoError, type GeoErrorKind } from "@/lib/geolocation";
-import { isInAppBrowser, openInBrowserUrl } from "@/lib/browser";
+import { copyCurrentPageUrl, isInAppBrowser, openInBrowserUrl } from "@/lib/browser";
 import { formatAge } from "@/utils/formatter";
 import { useI18n } from "@/i18n/LanguageContext";
 
-type LocationState = "idle" | "loading" | "shared" | "denied";
+type LocationState = "idle" | "loading" | "shared" | "denied" | "sendError";
 
 interface Props { params: Promise<{ code: string }>; }
 
@@ -35,6 +35,8 @@ export default function ScanProfilePage({ params }: Props) {
   const [locState, setLocState] = useState<LocationState>("idle");
   const [geoErr, setGeoErr] = useState<GeoErrorKind>("denied");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [reportAsFound, setReportAsFound] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [medOpen, setMedOpen] = useState(true);
   const [idOpen, setIdOpen] = useState(true);
   const [scannedAt, setScannedAt] = useState("");
@@ -72,16 +74,36 @@ export default function ScanProfilePage({ params }: Props) {
   }, [code]);
 
   async function handleSendLocation(found = false) {
+    const shouldReportFound = found || reportAsFound;
+    if (found) setReportAsFound(true);
     setLocState("loading");
+    let nextCoords = coords;
     try {
-      const { lat, lng } = await getCurrentCoords();
-      setCoords({ lat, lng });
-      try { await scanService.recordScan(code, lat, lng, found); } catch { /* vẫn báo thành công */ }
-      setLocState("shared");
+      if (!nextCoords) {
+        nextCoords = await getCurrentCoords();
+        setCoords(nextCoords);
+      }
     } catch (e) {
       // Phân loại lỗi: chỉ hiện "cho phép truy cập" khi thật sự bị từ chối.
       setGeoErr(e instanceof GeoError ? e.kind : "unavailable");
       setLocState("denied");
+      return;
+    }
+
+    try {
+      await scanService.recordScan(code, nextCoords.lat, nextCoords.lng, shouldReportFound);
+      setReportAsFound(false);
+      setLocState("shared");
+    } catch {
+      // Giữ lại coordinates để lần thử sau chỉ gửi lại API, không xin GPS lần nữa.
+      setLocState("sendError");
+    }
+  }
+
+  async function handleCopyLink() {
+    if (await copyCurrentPageUrl()) {
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
     }
   }
 
@@ -109,6 +131,7 @@ export default function ScanProfilePage({ params }: Props) {
 
   const photo = pet.photo ?? FALLBACK_PHOTO;
   const isLost = pet.status === "lost";
+  const externalBrowserUrl = openInBrowserUrl();
   const genderLabel = pet.gender === "male" ? `${t("common.male")} ♂` : pet.gender === "female" ? `${t("common.female")} ♀` : "—";
 
   return (
@@ -205,25 +228,44 @@ export default function ScanProfilePage({ params }: Props) {
               <span className="w-12 h-12 rounded-2xl bg-[#22C55E]/20 flex items-center justify-center shrink-0"><Check size={22} className="text-[#22C55E]" /></span>
               <div className="flex-1"><p className="text-[#22C55E] font-black text-[16px] font-display">{t("ps.locSent")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{coords ? `${coords.lat.toFixed(4)}°, ${coords.lng.toFixed(4)}°` : t("ps.gpsShared")}</p></div>
             </div>
+          ) : locState === "sendError" ? (
+            <button
+              type="button"
+              onClick={() => handleSendLocation(reportAsFound)}
+              className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-[#FFF7ED] border-2 border-[#FF7B35] text-left w-full"
+            >
+              <span className="w-12 h-12 rounded-2xl bg-[#FF7B35]/20 flex items-center justify-center shrink-0"><MapPin size={22} className="text-[#FF7B35]" /></span>
+              <div className="flex-1"><p className="text-[#FF7B35] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{t("ps.sendFailed")}</p></div>
+            </button>
           ) : locState === "denied" ? (
-            isInAppBrowser() ? (
+            geoErr === "insecure" ? (
+              <div className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444]">
+                <span className="w-12 h-12 rounded-2xl bg-[#EF4444]/20 flex items-center justify-center shrink-0"><Shield size={22} className="text-[#EF4444]" /></span>
+                <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.httpsRequired")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{t("ps.insecureContext")}</p></div>
+              </div>
+            ) : isInAppBrowser() ? (
               <div className="flex flex-col gap-3 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444]">
                 <div className="flex items-center gap-4">
                   <span className="w-12 h-12 rounded-2xl bg-[#EF4444]/20 flex items-center justify-center shrink-0"><MapPin size={22} className="text-[#EF4444]" /></span>
                   <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{t("ps.inAppBrowser")}</p></div>
                 </div>
-                {openInBrowserUrl() && (
-                  <a href={openInBrowserUrl()!} className="self-center px-5 py-2.5 rounded-xl bg-[#EF4444] text-white font-bold text-[13px] font-display">{t("ps.openInBrowser")}</a>
+                {externalBrowserUrl ? (
+                  <a href={externalBrowserUrl} className="self-center px-5 py-2.5 rounded-xl bg-[#EF4444] text-white font-bold text-[13px] font-display">{t("ps.openInBrowser")}</a>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-[#6B7A8D] text-[12px] text-center font-body">{t("ps.openSafariHint")}</p>
+                    <button type="button" onClick={handleCopyLink} className="px-5 py-2.5 rounded-xl bg-[#EF4444] text-white font-bold text-[13px] font-display">{linkCopied ? t("ps.linkCopied") : t("ps.copyLink")}</button>
+                  </div>
                 )}
               </div>
             ) : (
               <button
                 type="button"
-                onClick={() => { if (geoErr !== "denied") handleSendLocation(false); }}
+                onClick={() => handleSendLocation(false)}
                 className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444] text-left w-full"
               >
                 <span className="w-12 h-12 rounded-2xl bg-[#EF4444]/20 flex items-center justify-center shrink-0"><MapPin size={22} className="text-[#EF4444]" /></span>
-                <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{geoErr === "timeout" ? t("ps.locTimeout") : geoErr === "denied" ? t("ps.allowLoc") : t("ps.locUnavailDesc")}</p></div>
+                <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{geoErr === "timeout" ? t("ps.locTimeout") : geoErr === "denied" ? t("ps.permissionHelp") : t("ps.locUnavailDesc")}</p></div>
               </button>
             )
           ) : (

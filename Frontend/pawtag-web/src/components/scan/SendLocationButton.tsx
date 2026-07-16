@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { MapPin, Check, Loader2 } from "lucide-react";
 import { getCurrentCoords, GeoError, type GeoErrorKind } from "@/lib/geolocation";
-import { isInAppBrowser, openInBrowserUrl } from "@/lib/browser";
+import { copyCurrentPageUrl, isInAppBrowser, openInBrowserUrl } from "@/lib/browser";
 
 type LocationState = "idle" | "loading" | "shared" | "denied";
 
@@ -10,6 +10,7 @@ export function SendLocationButton() {
   const [locState, setLocState] = useState<LocationState>("idle");
   const [geoErr,   setGeoErr]   = useState<GeoErrorKind>("denied");
   const [coords,   setCoords]   = useState<{ lat: number; lng: number } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function handleSendLocation() {
     setLocState("loading");
@@ -52,19 +53,25 @@ export function SendLocationButton() {
               <p className="text-[#6B7A8D] text-[12px] font-body">This in-app browser can&apos;t share location — open in Chrome or Safari</p>
             </div>
           </div>
-          {url && <a href={url} className="self-center px-4 py-2 rounded-xl bg-[#EF4444] text-white font-bold text-[12px] font-display">Open in browser</a>}
+          {url ? (
+            <a href={url} className="self-center px-4 py-2 rounded-xl bg-[#EF4444] text-white font-bold text-[12px] font-display">Open in browser</a>
+          ) : (
+            <button type="button" onClick={async () => { if (await copyCurrentPageUrl()) { setCopied(true); window.setTimeout(() => setCopied(false), 2000); } }} className="self-center px-4 py-2 rounded-xl bg-[#EF4444] text-white font-bold text-[12px] font-display">{copied ? "Link copied" : "Copy link for Safari"}</button>
+          )}
         </div>
       );
     }
-    const desc = geoErr === "timeout"
+    const desc = geoErr === "insecure"
+      ? "Location requires a secure HTTPS page"
+      : geoErr === "timeout"
       ? "Getting your location took too long — tap to try again"
       : geoErr === "denied"
-        ? "Please allow location access"
+        ? "Allow location in site settings, then tap to try again"
         : "Couldn't determine a location — tap to try again";
     return (
       <button
         type="button"
-        onClick={() => { if (geoErr !== "denied") handleSendLocation(); }}
+        onClick={() => { if (geoErr !== "insecure") handleSendLocation(); }}
         className="w-full flex items-center px-4 h-[72px] rounded-2xl bg-[#FEF2F2] border-2 border-[#EF4444] shadow-card text-left"
       >
         <div className="w-12 h-12 rounded-xl bg-[#EF4444]/20 flex items-center justify-center mr-4 shrink-0">

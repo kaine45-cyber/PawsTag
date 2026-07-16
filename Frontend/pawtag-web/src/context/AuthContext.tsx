@@ -92,8 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadPets();
   }, [loadPets]);
 
-  const logout = useCallback(() => {
-    authService.logout();
+  const logout = useCallback(async () => {
+    // Keep UI/session state intact until the backend has actually cleared the
+    // HttpOnly cookie. This prevents a late logout response from racing a new login.
+    await authService.logout();
     clearLegacyToken();
     setUser(null);
     setPets([]);

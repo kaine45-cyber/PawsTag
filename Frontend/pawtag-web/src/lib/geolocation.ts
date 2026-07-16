@@ -8,7 +8,7 @@
  * gộp chung thành "denied" — trước đây timeout 8s cũng hiện "vui lòng cho phép
  * truy cập vị trí" gây hiểu lầm.
  */
-export type GeoErrorKind = "unsupported" | "denied" | "timeout" | "unavailable";
+export type GeoErrorKind = "insecure" | "unsupported" | "denied" | "timeout" | "unavailable";
 
 export interface GeoCoords { lat: number; lng: number }
 
@@ -19,6 +19,9 @@ function getPosition(options: PositionOptions): Promise<GeolocationPosition> {
 }
 
 export async function getCurrentCoords(): Promise<GeoCoords> {
+  if (typeof window !== "undefined" && !window.isSecureContext) {
+    throw new GeoError("insecure");
+  }
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     throw new GeoError("unsupported");
   }
@@ -28,15 +31,15 @@ export async function getCurrentCoords(): Promise<GeoCoords> {
   } catch (e) {
     const err = e as GeolocationPositionError;
     // Người dùng từ chối → không thử lại (trình duyệt sẽ không hỏi lại).
-    if (err.code === err.PERMISSION_DENIED) throw new GeoError("denied");
+    if (err.code === 1) throw new GeoError("denied");
     // Timeout / không có nguồn vị trí → thử lại nhanh với độ chính xác thấp.
     try {
       const p = await getPosition({ enableHighAccuracy: false, timeout: 15_000, maximumAge: 300_000 });
       return { lat: p.coords.latitude, lng: p.coords.longitude };
     } catch (e2) {
       const err2 = e2 as GeolocationPositionError;
-      if (err2.code === err2.PERMISSION_DENIED) throw new GeoError("denied");
-      if (err2.code === err2.TIMEOUT) throw new GeoError("timeout");
+      if (err2.code === 1) throw new GeoError("denied");
+      if (err2.code === 3) throw new GeoError("timeout");
       throw new GeoError("unavailable");
     }
   }

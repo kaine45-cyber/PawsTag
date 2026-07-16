@@ -26,3 +26,28 @@ export function openInBrowserUrl(): string | null {
   const { host, pathname, search } = window.location;
   return `intent://${host}${pathname}${search}#Intent;scheme=https;S.browser_fallback_url=${encodeURIComponent(window.location.href)};end`;
 }
+
+/** Copy URL để người dùng iOS dán vào Safari khi WebView không có open-browser intent. */
+export async function copyCurrentPageUrl(): Promise<boolean> {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    return true;
+  } catch {
+    const input = document.createElement("textarea");
+    try {
+      input.value = url;
+      input.setAttribute("readonly", "");
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      input.remove();
+    }
+  }
+}

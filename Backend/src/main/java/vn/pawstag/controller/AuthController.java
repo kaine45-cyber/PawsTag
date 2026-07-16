@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +37,7 @@ import java.time.Duration;
 public class AuthController {
 
     private static final String AUTH_COOKIE = "access_token";
+    private static final String CSRF_COOKIE = "XSRF-TOKEN";
 
     private final AuthService authService;
     private final GoogleNonceService googleNonceService;
@@ -85,8 +87,19 @@ public class AuthController {
     @Operation(summary = "Logout and clear auth cookie")
     public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest http) {
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, clearCookie(http).toString())
+                .header(HttpHeaders.SET_COOKIE,
+                        clearCookie(http).toString(),
+                        clearCsrfCookie(http).toString())
                 .body(ApiResponse.ok(null, "Logged out"));
+    }
+
+    @GetMapping("/csrf")
+    @Operation(summary = "Issue the readable CSRF cookie used by the SPA")
+    public ResponseEntity<ApiResponse<Void>> csrf() {
+        // SpaCsrfTokenRequestHandler forces token creation before this controller runs.
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ApiResponse.ok(null, "CSRF token issued"));
     }
 
     @GetMapping("/google/nonce")
@@ -131,6 +144,16 @@ public class AuthController {
     private ResponseCookie clearCookie(HttpServletRequest http) {
         return ResponseCookie.from(AUTH_COOKIE, "")
                 .httpOnly(true)
+                .secure(isSecureRequest(http))
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
+    }
+
+    private ResponseCookie clearCsrfCookie(HttpServletRequest http) {
+        return ResponseCookie.from(CSRF_COOKIE, "")
+                .httpOnly(false)
                 .secure(isSecureRequest(http))
                 .sameSite("Lax")
                 .path("/")

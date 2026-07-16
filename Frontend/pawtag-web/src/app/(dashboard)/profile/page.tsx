@@ -44,6 +44,8 @@ export default function ProfilePage() {
   const [modal,    setModal]    = useState<Modal>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState("");
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
 
   async function handleSave() {
     try {
@@ -80,9 +82,17 @@ export default function ProfilePage() {
     finally { input.value = ""; }   // reset để chọn lại được (kể cả cùng file)
   }
 
-  function handleLogout() {
-    logout();
-    router.replace("/login");
+  async function handleLogout() {
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    setLogoutError("");
+    try {
+      await logout();
+      router.replace("/login");
+    } catch {
+      setLogoutError(t("profile.signOutFailed"));
+      setLogoutBusy(false);
+    }
   }
 
   const totalScans = pets.reduce((s, p) => s + p.totalScans, 0);
@@ -284,11 +294,13 @@ export default function ProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-[#EF4444] text-[#EF4444] font-bold text-[14px] font-display transition-all active:scale-95 active:bg-[#FEF2F2]"
+          disabled={logoutBusy}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-[#EF4444] text-[#EF4444] font-bold text-[14px] font-display transition-all active:scale-95 active:bg-[#FEF2F2] disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <LogOut size={16} />
-          {t("profile.signOut")}
+          {logoutBusy ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
+          {logoutBusy ? t("profile.signingOut") : t("profile.signOut")}
         </button>
+        {logoutError && <p className="text-center text-[12px] text-[#EF4444] font-body">{logoutError}</p>}
 
         <p className="text-center text-[11px] text-[#C5CFD9] font-body">PawsTag v1.0.0 · {t("profile.freePlan")}</p>
       </div>

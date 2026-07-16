@@ -1,9 +1,10 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PawPrint, History,
-  Bell, BookOpen, LogOut, UserCircle,
+  Bell, BookOpen, Loader2, LogOut, UserCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,6 +35,20 @@ const NAV_GROUPS = [
 export default function Sidebar() {
   const path    = usePathname();
   const { user, logout } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
+    try {
+      await logout();
+    } catch {
+      setLogoutError("Could not sign out. Please try again.");
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <aside
@@ -109,12 +124,14 @@ export default function Sidebar() {
         </div>
         <button
           type="button"
-          onClick={logout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-semibold text-[#EF4444] hover:bg-[#FEF2F2] transition-all active:scale-95 font-body"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-semibold text-[#EF4444] hover:bg-[#FEF2F2] transition-all active:scale-95 font-body disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <LogOut size={14} />
-          Sign out
+          {loggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
+          {loggingOut ? "Signing out..." : "Sign out"}
         </button>
+        {logoutError && <p className="px-2 mt-1 text-[10px] text-[#EF4444] font-body">{logoutError}</p>}
         {/* Design spec footer note */}
         <p className="text-[9px] text-center text-[#C5CFD9] font-body mt-2 tracking-wider">
           390×844 · iPhone 15

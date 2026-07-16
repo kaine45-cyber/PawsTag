@@ -23,7 +23,7 @@ export interface AuthActions {
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   loginWithFacebook: (accessToken: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshPets: () => Promise<void>;
   setUser: (user: Owner) => void;
 }

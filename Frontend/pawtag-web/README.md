@@ -12,6 +12,11 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Geolocation works on `localhost`, but mobile browsers opening a LAN URL such as
+`http://192.168.x.x:3000` do not treat it as a secure context. Test location on
+a phone through an HTTPS tunnel (the dev server accepts `*.trycloudflare.com`)
+or through the production HTTPS URL.
+
 By default the app calls `/api`, and `next.config.ts` proxies those requests to
 `API_PROXY_TARGET` (`http://localhost:8082` locally).
 

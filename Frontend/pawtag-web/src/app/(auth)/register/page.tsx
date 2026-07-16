@@ -61,6 +61,7 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!name || !email || !password) { setError(t("rg.fillAll")); return; }
     if (password.length < 8) { setError(t("rg.pwMin")); return; }
+    if (new TextEncoder().encode(password).length > 72) { setError(t("rg.pwMax")); return; }
     if (!terms) { setError(t("rg.acceptTerms")); return; }
     setError("");
     setStep(2);
@@ -225,6 +226,9 @@ export default function RegisterPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t("rg.pwPlaceholder")}
                     autoComplete="new-password"
+                    minLength={8}
+                    maxLength={72}
+                    required
                     className={`${inputClass} pr-12`}
                   />
                   <button type="button" onClick={() => setShowPass(!showPass)} aria-label="Toggle password" className="absolute right-4 top-1/2 -translate-y-1/2">

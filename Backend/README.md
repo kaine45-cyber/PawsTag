@@ -56,12 +56,23 @@ Optional environment variables:
 GOONG_API_URL=https://rsapi.goong.io
 GEOCODING_ENABLED=true
 RATE_LIMIT_PER_MINUTE=100
+```
+
+Password reset email requires valid SMTP credentials. These values must be set
+as real process/IDE/Render environment variables; Spring Boot does not load a
+local `.env` file automatically:
+
+```env
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
-MAIL_USERNAME=
-MAIL_PASSWORD=
-MAIL_FROM=PawsTag <no-reply@pawstag.vn>
+MAIL_USERNAME=your-smtp-account@example.com
+MAIL_PASSWORD=your-smtp-password-or-app-password
+MAIL_FROM=PawsTag <an-authorized-sender@example.com>
 ```
+
+`MAIL_FROM` must be an address the configured SMTP account is allowed to send
+as. Without these values the application stays available, but password-reset
+delivery is skipped and an actionable server-side error is logged.
 
 ## Supabase Database
 

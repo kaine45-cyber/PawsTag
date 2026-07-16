@@ -18,8 +18,10 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState("");
   const [cooldown, setCooldown] = useState(0);
 
@@ -74,11 +76,17 @@ export default function ForgotPasswordPage() {
 
   async function resetPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (!otp.trim() || !newPassword.trim()) { setError(t("fp.fillAll")); return; }
+    if (!otp.trim() || !newPassword || !confirmPassword) { setError(t("fp.fillAll")); return; }
+    if (newPassword.length < 8) { setError(t("fp.passwordLength")); return; }
+    if (new TextEncoder().encode(newPassword).length > 72) { setError(t("fp.passwordTooLong")); return; }
+    if (newPassword !== confirmPassword) { setError(t("fp.passwordMismatch")); return; }
     setError("");
     setLoading(true);
     try {
       await authService.resetPassword(email.trim(), otp.trim(), newPassword);
+      setOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
       setStep("done");
     } catch (err) {
       setError(statusOf(err) === 429 ? t("fp.tooManyAttempts") : errMsg(err, t("fp.invalidOtp")));
@@ -88,10 +96,12 @@ export default function ForgotPasswordPage() {
   }
 
   async function resend() {
-    if (cooldown > 0) return;
+    if (cooldown > 0 || resendLoading) return;
     setError("");
+    setResendLoading(true);
     try {
       const data = await authService.forgotPassword(email.trim());
+      setOtp("");
       setCooldown(cooldownOf(data));
     } catch (err) {
       if (statusOf(err) === 429) {
@@ -100,6 +110,8 @@ export default function ForgotPasswordPage() {
       } else {
         setError(errMsg(err, t("fp.genericError")));
       }
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -138,6 +150,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("lg.emailPlaceholder")}
                   autoComplete="email"
+                  required
                   className={inputClass}
                 />
               </div>
@@ -178,6 +191,8 @@ export default function ForgotPasswordPage() {
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
+                  minLength={6}
+                  required
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder={t("fp.otpPlaceholder")}
@@ -194,6 +209,9 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder={t("fp.newPwPlaceholder")}
                     autoComplete="new-password"
+                    minLength={8}
+                    maxLength={72}
+                    required
                     className={`${inputClass} pr-12`}
                   />
                   <button
@@ -205,6 +223,21 @@ export default function ForgotPasswordPage() {
                     {showPass ? <EyeOff size={18} className="text-[#9BAABB]" /> : <Eye size={18} className="text-[#9BAABB]" />}
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[15px] font-bold text-[#1A2332] font-display mb-2">{t("fp.confirmPassword")}</label>
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder={t("fp.confirmPwPlaceholder")}
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={72}
+                  required
+                  className={inputClass}
+                />
               </div>
 
               {error && <p className="text-[13px] text-[#EF4444] font-body text-center">{error}</p>}
@@ -224,10 +257,14 @@ export default function ForgotPasswordPage() {
               <button
                 type="button"
                 onClick={resend}
-                disabled={cooldown > 0}
+                disabled={cooldown > 0 || resendLoading}
                 className="text-[14px] text-[#4A8FE8] font-bold font-display text-center disabled:text-[#9BAABB] disabled:cursor-not-allowed"
               >
-                {cooldown > 0 ? t("fp.resendIn").replace("{s}", String(cooldown)) : t("fp.resendCode")}
+                {resendLoading
+                  ? t("fp.sending")
+                  : cooldown > 0
+                    ? t("fp.resendIn").replace("{s}", String(cooldown))
+                    : t("fp.resendCode")}
               </button>
             </form>
           </>

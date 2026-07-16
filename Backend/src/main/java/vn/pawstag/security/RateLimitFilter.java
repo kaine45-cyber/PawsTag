@@ -74,8 +74,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String clientIp(HttpServletRequest req) {
-        String xf = req.getHeader("X-Forwarded-For");
-        if (xf != null && !xf.isBlank()) return xf.split(",")[0].trim();
+        // Không tự đọc X-Forwarded-For: client có thể giả header này khi backend
+        // truy cập trực tiếp. Tomcat RemoteIpValve (forward-headers-strategy=native)
+        // chỉ chuyển trusted proxy headers thành remoteAddr trước khi request tới đây.
         return req.getRemoteAddr();
     }
 }

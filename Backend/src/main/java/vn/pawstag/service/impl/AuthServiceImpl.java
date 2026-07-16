@@ -18,8 +18,6 @@ import vn.pawstag.dto.response.OwnerResponse;
 import vn.pawstag.entity.Owner;
 import vn.pawstag.enums.AuthProvider;
 import vn.pawstag.exception.BadRequestException;
-import vn.pawstag.exception.EmailDeliveryException;
-import vn.pawstag.exception.OtpCooldownException;
 import vn.pawstag.exception.TooManyAttemptsException;
 import vn.pawstag.repository.OwnerRepository;
 import vn.pawstag.security.FacebookTokenVerifier;
@@ -31,6 +29,8 @@ import vn.pawstag.security.PasswordResetService;
 import vn.pawstag.service.AuthService;
 import vn.pawstag.service.EmailService;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -76,7 +76,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthSession register(RegisterRequest request) {
-        String email = request.email().trim().toLowerCase();
+        validateBcryptPassword(request.password());
+        String email = normalizeEmail(request.email());
         if (ownerRepository.existsByEmail(email)) {
             throw new BadRequestException("Email already registered");
         }
@@ -98,7 +99,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public AuthSession login(LoginRequest request) {
-        String email = request.email().trim().toLowerCase();
+        String email = normalizeEmail(request.email());
 
         // Đang bị khóa do sai quá nhiều lần?
         long lockedSecs = loginAttemptService.lockedSecondsRemaining(email);
@@ -134,7 +135,7 @@ public class AuthServiceImpl implements AuthService {
         if (!googleNonceService.consume(acc.nonce())) {
             throw new BadRequestException("Invalid Google token");
         }
-        String email = acc.email().trim().toLowerCase();
+        String email = normalizeEmail(acc.email());
 
         // 2) Định danh chính = Google sub (google_id); fallback link theo email đã verified.
         Owner owner = findOrCreateSocialOwner(
@@ -170,7 +171,7 @@ public class AuthServiceImpl implements AuthService {
         // Email FB trả về đã được Facebook verify nên link theo email là an toàn.
         String email = (acc.email() == null || acc.email().isBlank())
                 ? null
-                : acc.email().trim().toLowerCase();
+                : normalizeEmail(acc.email());
 
         // 2) Định danh chính = Facebook user id (facebook_id); fallback link theo email nếu có.
         Owner owner = findOrCreateSocialOwner(
@@ -231,44 +232,60 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public int forgotPassword(ForgotPasswordRequest request) {
-        String email = request.email().trim().toLowerCase();
+        String email = normalizeEmail(request.email());
         int cooldownSeconds = passwordResetService.resendCooldownSeconds();
-        Owner owner = ownerRepository.findByEmail(email).orElse(null);
-        // Không tiết lộ email có tồn tại hay không — controller luôn trả response chung chung.
-        if (owner == null) return cooldownSeconds;
-
-        PasswordResetService.IssueResult issue = passwordResetService.issue(email);
-        if (!issue.issued()) {
-            throw new OtpCooldownException(issue.retryAfterSeconds());
-        }
-
+        // Luôn trả cùng status/data. SMTP chạy bất đồng bộ; BCrypt giả cân bằng phần
+        // lớn chênh lệch thời gian giữa email có/không tồn tại và request cooldown.
         try {
-            emailService.sendPasswordResetOtp(email, issue.otp(), otpExpiryMinutes);
-        } catch (Exception e) {
-            log.error("Could not send password reset email to {}", email, e);
-            throw new EmailDeliveryException("Could not send reset code. Please try again later.", e);
+            Owner owner = ownerRepository.findByEmail(email).orElse(null);
+            if (owner == null) {
+                passwordResetService.performDummyHash();
+                return cooldownSeconds;
+            }
+
+            PasswordResetService.IssueResult issue = passwordResetService.issue(email);
+            if (issue.issued()) {
+                emailService.sendPasswordResetOtp(email, issue.otp(), otpExpiryMinutes);
+            } else {
+                passwordResetService.performDummyHash();
+            }
+        } catch (RuntimeException e) {
+            // Public response vẫn chung chung để không biến lỗi DB/SMTP thành oracle
+            // xác định email. Chi tiết chỉ có trong server log và không kèm địa chỉ.
+            log.error("Password reset request could not be processed ({})", e.getClass().getSimpleName());
         }
         return cooldownSeconds;
     }
 
     @Override
-    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        String email = request.email().trim().toLowerCase();
-        PasswordResetService.OtpResult result = passwordResetService.verify(email, request.otp().trim());
+        validateBcryptPassword(request.newPassword());
+        String email = normalizeEmail(request.email());
+        PasswordResetService.OtpResult result = passwordResetService.resetPassword(
+                email, request.otp().trim(), request.newPassword());
         if (result == PasswordResetService.OtpResult.TOO_MANY_ATTEMPTS) {
             throw new TooManyAttemptsException("Too many incorrect attempts. Please request a new code.");
         }
         if (result != PasswordResetService.OtpResult.OK) {
             throw new BadRequestException("Invalid or expired code");
         }
-        // OTP hợp lệ → đặt mật khẩu local mới. Kể cả tài khoản Google/Facebook chưa có
-        // passwordHash cũng được đặt mật khẩu (chủ email đã xác thực qua OTP).
-        Owner owner = ownerRepository.findByEmail(email)
-                .orElseThrow(() -> new BadRequestException("Invalid or expired code"));
-        owner.setPasswordHash(passwordEncoder.encode(request.newPassword()));
-        ownerRepository.save(owner);
+        loginAttemptService.loginSucceeded(email);
+        try {
+            emailService.sendPasswordChangedNotice(email);
+        } catch (RuntimeException e) {
+            // Việc gửi thông báo không được làm rollback mật khẩu đã đổi thành công.
+            log.error("Password changed notice could not be scheduled ({})", e.getClass().getSimpleName());
+        }
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void validateBcryptPassword(String password) {
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new BadRequestException("Password must not exceed 72 UTF-8 bytes");
+        }
     }
 }

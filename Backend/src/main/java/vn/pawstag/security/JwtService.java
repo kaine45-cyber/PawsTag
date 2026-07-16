@@ -35,6 +35,7 @@ public class JwtService {
                 .subject(String.valueOf(owner.getId()))
                 .claim("ownerId", owner.getId())
                 .claim("role", owner.getRole())
+                .claim("authVersion", owner.getAuthVersion())
                 .issuedAt(now)
                 .expiration(exp)
                 .signWith(key)
@@ -60,6 +61,23 @@ public class JwtService {
         try {
             Date exp = parse(token).getExpiration();
             return exp != null && exp.after(new Date());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Token cũ chưa có claim authVersion được xem là phiên bản 0. Vì vậy migration
+     * không đăng xuất tất cả người dùng, nhưng lần reset đầu tiên (0 -> 1) vẫn thu hồi
+     * được cả token cũ lẫn token mới đã phát trước đó.
+     */
+    public boolean isValidForAuthVersion(String token, int expectedAuthVersion) {
+        try {
+            Claims claims = parse(token);
+            Date exp = claims.getExpiration();
+            Object rawVersion = claims.get("authVersion");
+            int tokenVersion = rawVersion instanceof Number number ? number.intValue() : 0;
+            return exp != null && exp.after(new Date()) && tokenVersion == expectedAuthVersion;
         } catch (Exception e) {
             return false;
         }

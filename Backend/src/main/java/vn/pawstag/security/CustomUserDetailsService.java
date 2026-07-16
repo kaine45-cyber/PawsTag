@@ -19,6 +19,8 @@ import java.util.List;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
+    public record AuthenticatedOwner(UserDetails userDetails, int authVersion) {}
+
     private final OwnerRepository ownerRepository;
 
     public CustomUserDetailsService(OwnerRepository ownerRepository) {
@@ -27,13 +29,18 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String principal) throws UsernameNotFoundException {
+        return loadAuthenticatedOwner(principal).userDetails();
+    }
+
+    public AuthenticatedOwner loadAuthenticatedOwner(String principal) throws UsernameNotFoundException {
         Owner owner = ownerRepository.findByPrincipal(principal)
                 .orElseThrow(() -> new UsernameNotFoundException("Owner not found: " + principal));
 
-        return new User(
+        UserDetails user = new User(
                 String.valueOf(owner.getId()),
                 owner.getPasswordHash() != null ? owner.getPasswordHash() : "",
                 List.of(new SimpleGrantedAuthority("ROLE_" + owner.getRole()))
         );
+        return new AuthenticatedOwner(user, owner.getAuthVersion());
     }
 }

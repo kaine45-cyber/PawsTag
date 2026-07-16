@@ -11,6 +11,7 @@ import { tagService, type PublicPet } from "@/services/tag.service";
 import { scanService } from "@/services/scan.service";
 import { petService } from "@/services/pet.service";
 import { shareOrCopy } from "@/lib/share";
+import { getCurrentCoords, GeoError, type GeoErrorKind } from "@/lib/geolocation";
 import { formatAge } from "@/utils/formatter";
 import { useI18n } from "@/i18n/LanguageContext";
 
@@ -31,6 +32,7 @@ export default function ScanProfilePage({ params }: Props) {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [locState, setLocState] = useState<LocationState>("idle");
+  const [geoErr, setGeoErr] = useState<GeoErrorKind>("denied");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [medOpen, setMedOpen] = useState(true);
   const [idOpen, setIdOpen] = useState(true);
@@ -68,19 +70,18 @@ export default function ScanProfilePage({ params }: Props) {
     return () => { active = false; };
   }, [code]);
 
-  function handleSendLocation(found = false) {
-    if (!navigator.geolocation) { setLocState("denied"); return; }
+  async function handleSendLocation(found = false) {
     setLocState("loading");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude, lng = pos.coords.longitude;
-        setCoords({ lat, lng });
-        try { await scanService.recordScan(code, lat, lng, found); } catch { /* vẫn báo thành công */ }
-        setLocState("shared");
-      },
-      () => setLocState("denied"),
-      { timeout: 8000 },
-    );
+    try {
+      const { lat, lng } = await getCurrentCoords();
+      setCoords({ lat, lng });
+      try { await scanService.recordScan(code, lat, lng, found); } catch { /* vẫn báo thành công */ }
+      setLocState("shared");
+    } catch (e) {
+      // Phân loại lỗi: chỉ hiện "cho phép truy cập" khi thật sự bị từ chối.
+      setGeoErr(e instanceof GeoError ? e.kind : "unavailable");
+      setLocState("denied");
+    }
   }
 
   if (loading) {
@@ -204,10 +205,14 @@ export default function ScanProfilePage({ params }: Props) {
               <div className="flex-1"><p className="text-[#22C55E] font-black text-[16px] font-display">{t("ps.locSent")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{coords ? `${coords.lat.toFixed(4)}°, ${coords.lng.toFixed(4)}°` : t("ps.gpsShared")}</p></div>
             </div>
           ) : locState === "denied" ? (
-            <div className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444]">
+            <button
+              type="button"
+              onClick={() => { if (geoErr !== "denied") handleSendLocation(false); }}
+              className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444] text-left w-full"
+            >
               <span className="w-12 h-12 rounded-2xl bg-[#EF4444]/20 flex items-center justify-center shrink-0"><MapPin size={22} className="text-[#EF4444]" /></span>
-              <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{t("ps.allowLoc")}</p></div>
-            </div>
+              <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{geoErr === "timeout" ? t("ps.locTimeout") : geoErr === "denied" ? t("ps.allowLoc") : t("ps.locUnavailDesc")}</p></div>
+            </button>
           ) : (
             <button type="button" onClick={() => handleSendLocation(false)} disabled={locState === "loading"} className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-gradient-to-r from-[#FF7B35] to-[#FFAB7A] shadow-loc active:scale-[0.98] transition-all disabled:opacity-80">
               <span className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">{locState === "loading" ? <Loader2 size={22} color="#fff" className="animate-spin" /> : <MapPin size={22} color="#fff" />}</span>

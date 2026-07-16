@@ -60,12 +60,13 @@ class PetServiceImplTest {
         Owner owner = new Owner();
         owner.setId(1L);
         owner.setEmail("a@b.com");
-        when(ownerRepository.findByEmail("a@b.com")).thenReturn(Optional.of(owner));
+        // Principal = owner id (JWT subject) — findByPrincipal là default method gọi findById.
+        when(ownerRepository.findByPrincipal("1")).thenReturn(Optional.of(owner));
         Pet saved = new Pet();
         saved.setId(10L);
         when(petRepository.save(any(Pet.class))).thenReturn(saved);
 
-        service.create("a@b.com", requestWith("ABC123"));
+        service.create("1", requestWith("ABC123"));
 
         // Thứ tự bắt buộc: lưu pet TRƯỚC, rồi gán tag đã in sẵn (cùng transaction).
         InOrder ordered = inOrder(petRepository, tagService);
@@ -75,9 +76,9 @@ class PetServiceImplTest {
 
     @Test
     void create_withBlankCode_throwsAndTouchesNothing() {
-        assertThatThrownBy(() -> service.create("a@b.com", requestWith("   ")))
+        assertThatThrownBy(() -> service.create("1", requestWith("   ")))
                 .isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> service.create("a@b.com", requestWith(null)))
+        assertThatThrownBy(() -> service.create("1", requestWith(null)))
                 .isInstanceOf(BadRequestException.class);
 
         // Validate mã QR TRƯỚC khi chạm owner/pet/tag — không tạo pet mồ côi.

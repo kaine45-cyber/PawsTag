@@ -9,10 +9,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import vn.pawstag.dto.request.FacebookLoginRequest;
 import vn.pawstag.dto.request.ForgotPasswordRequest;
 import vn.pawstag.dto.request.GoogleLoginRequest;
 import vn.pawstag.dto.request.LoginRequest;
@@ -22,6 +24,8 @@ import vn.pawstag.dto.response.ApiResponse;
 import vn.pawstag.dto.response.AuthResponse;
 import vn.pawstag.dto.response.AuthSession;
 import vn.pawstag.dto.response.ForgotPasswordResponse;
+import vn.pawstag.dto.response.GoogleNonceResponse;
+import vn.pawstag.security.GoogleNonceService;
 import vn.pawstag.service.AuthService;
 
 import java.time.Duration;
@@ -34,11 +38,14 @@ public class AuthController {
     private static final String AUTH_COOKIE = "access_token";
 
     private final AuthService authService;
+    private final GoogleNonceService googleNonceService;
     private final long jwtExpirationMs;
 
     public AuthController(AuthService authService,
+                          GoogleNonceService googleNonceService,
                           @Value("${app.jwt.expiration-ms}") long jwtExpirationMs) {
         this.authService = authService;
+        this.googleNonceService = googleNonceService;
         this.jwtExpirationMs = jwtExpirationMs;
     }
 
@@ -82,6 +89,12 @@ public class AuthController {
                 .body(ApiResponse.ok(null, "Logged out"));
     }
 
+    @GetMapping("/google/nonce")
+    @Operation(summary = "Issue a single-use nonce for Google Sign-In (anti-replay)")
+    public ApiResponse<GoogleNonceResponse> googleNonce() {
+        return ApiResponse.ok(new GoogleNonceResponse(googleNonceService.issue()));
+    }
+
     @PostMapping("/google")
     @Operation(summary = "Login/Register with a Google ID token")
     public ResponseEntity<ApiResponse<AuthResponse>> google(@Valid @RequestBody GoogleLoginRequest request,
@@ -90,10 +103,10 @@ public class AuthController {
     }
 
     @PostMapping("/facebook")
-    @Operation(summary = "Facebook login placeholder")
-    public ResponseEntity<ApiResponse<Void>> facebook() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-                .body(ApiResponse.error("Facebook login not implemented yet"));
+    @Operation(summary = "Login/Register with a Facebook access token")
+    public ResponseEntity<ApiResponse<AuthResponse>> facebook(@Valid @RequestBody FacebookLoginRequest request,
+                                                              HttpServletRequest http) {
+        return authenticated(authService.facebookLogin(request), "Logged in", HttpStatus.OK, http);
     }
 
     private ResponseEntity<ApiResponse<AuthResponse>> authenticated(AuthSession session,

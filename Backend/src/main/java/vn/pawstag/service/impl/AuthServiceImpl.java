@@ -3,9 +3,11 @@ package vn.pawstag.service.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.pawstag.dto.request.FacebookLoginRequest;
 import vn.pawstag.dto.request.ForgotPasswordRequest;
 import vn.pawstag.dto.request.GoogleLoginRequest;
 import vn.pawstag.dto.request.LoginRequest;
@@ -20,12 +22,18 @@ import vn.pawstag.exception.EmailDeliveryException;
 import vn.pawstag.exception.OtpCooldownException;
 import vn.pawstag.exception.TooManyAttemptsException;
 import vn.pawstag.repository.OwnerRepository;
+import vn.pawstag.security.FacebookTokenVerifier;
+import vn.pawstag.security.GoogleNonceService;
 import vn.pawstag.security.GoogleTokenVerifier;
 import vn.pawstag.security.JwtService;
 import vn.pawstag.security.LoginAttemptService;
 import vn.pawstag.security.PasswordResetService;
 import vn.pawstag.service.AuthService;
 import vn.pawstag.service.EmailService;
+
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -39,6 +47,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetService passwordResetService;
     private final EmailService emailService;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final GoogleNonceService googleNonceService;
+    private final FacebookTokenVerifier facebookTokenVerifier;
     private final int otpExpiryMinutes;
 
     public AuthServiceImpl(OwnerRepository ownerRepository,
@@ -48,6 +58,8 @@ public class AuthServiceImpl implements AuthService {
                            PasswordResetService passwordResetService,
                            EmailService emailService,
                            GoogleTokenVerifier googleTokenVerifier,
+                           GoogleNonceService googleNonceService,
+                           FacebookTokenVerifier facebookTokenVerifier,
                            @Value("${app.otp.expiry-minutes:10}") int otpExpiryMinutes) {
         this.ownerRepository = ownerRepository;
         this.passwordEncoder = passwordEncoder;
@@ -56,6 +68,8 @@ public class AuthServiceImpl implements AuthService {
         this.passwordResetService = passwordResetService;
         this.emailService = emailService;
         this.googleTokenVerifier = googleTokenVerifier;
+        this.googleNonceService = googleNonceService;
+        this.facebookTokenVerifier = facebookTokenVerifier;
         this.otpExpiryMinutes = otpExpiryMinutes;
     }
 
@@ -109,30 +123,31 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public AuthSession googleLogin(GoogleLoginRequest request) {
         // 1) Verify credential VỚI GOOGLE (chữ ký + aud + iss + exp) — không tin frontend decode.
         GoogleTokenVerifier.Account acc = googleTokenVerifier.verify(request.credential());
         if (acc.email() == null || !acc.emailVerified()) {
             throw new BadRequestException("Google account email is not verified");
         }
+        // Chống replay: nonce trong credential phải là nonce backend vừa phát và chưa dùng.
+        // (Consume sau các check trên để lần "email chưa verify" không đốt mất nonce của user.)
+        if (!googleNonceService.consume(acc.nonce())) {
+            throw new BadRequestException("Invalid Google token");
+        }
         String email = acc.email().trim().toLowerCase();
 
-        // 2) Định danh chính = Google sub (google_id).
-        Owner owner = ownerRepository.findByGoogleId(acc.sub()).orElse(null);
-
-        if (owner == null) {
-            // Chưa có theo google_id → thử theo email (đã verified) để LINK vào owner sẵn có.
-            owner = ownerRepository.findByEmail(email).orElse(null);
-            if (owner != null) {
-                owner.setGoogleId(acc.sub());
-                if (owner.getAvatarUrl() == null) owner.setAvatarUrl(acc.picture());
-                if (owner.getFullName() == null) owner.setFullName(acc.name());
-                // KHÔNG đụng passwordHash hiện có.
-                owner = ownerRepository.save(owner);
-            } else {
-                // Email chưa tồn tại → tạo owner mới bằng Google.
-                owner = ownerRepository.save(Owner.builder()
+        // 2) Định danh chính = Google sub (google_id); fallback link theo email đã verified.
+        Owner owner = findOrCreateSocialOwner(
+                () -> ownerRepository.findByGoogleId(acc.sub()),
+                email,
+                existing -> {
+                    existing.setGoogleId(acc.sub());
+                    if (existing.getAvatarUrl() == null) existing.setAvatarUrl(acc.picture());
+                    if (existing.getFullName() == null) existing.setFullName(acc.name());
+                    // KHÔNG đụng passwordHash hiện có.
+                    return existing;
+                },
+                () -> Owner.builder()
                         .email(email)
                         .fullName(acc.name())
                         .avatarUrl(acc.picture())
@@ -141,12 +156,78 @@ public class AuthServiceImpl implements AuthService {
                         .passwordHash(null)
                         .role("USER")
                         .build());
-            }
-        }
 
         // 3) Tạo session PawsTag (cookie HttpOnly set ở controller, không trả token trong JSON).
         String token = jwtService.generateToken(owner);
         return new AuthSession(token, OwnerResponse.from(owner));
+    }
+
+    @Override
+    public AuthSession facebookLogin(FacebookLoginRequest request) {
+        // 1) Verify access token VỚI GRAPH API (debug_token + appsecret_proof) — không tin frontend.
+        FacebookTokenVerifier.Account acc = facebookTokenVerifier.verify(request.accessToken());
+        // Facebook có thể KHÔNG trả email (đăng ký bằng SĐT / từ chối quyền) → chấp nhận email null.
+        // Email FB trả về đã được Facebook verify nên link theo email là an toàn.
+        String email = (acc.email() == null || acc.email().isBlank())
+                ? null
+                : acc.email().trim().toLowerCase();
+
+        // 2) Định danh chính = Facebook user id (facebook_id); fallback link theo email nếu có.
+        Owner owner = findOrCreateSocialOwner(
+                () -> ownerRepository.findByFacebookId(acc.id()),
+                email,
+                existing -> {
+                    existing.setFacebookId(acc.id());
+                    if (existing.getAvatarUrl() == null) existing.setAvatarUrl(acc.picture());
+                    if (existing.getFullName() == null) existing.setFullName(acc.name());
+                    // KHÔNG đụng passwordHash hiện có.
+                    return existing;
+                },
+                () -> Owner.builder()
+                        .email(email) // có thể null — user không email không dùng được forgot-password
+                        .fullName(acc.name())
+                        .avatarUrl(acc.picture())
+                        .facebookId(acc.id())
+                        .authProvider(AuthProvider.FACEBOOK)
+                        .passwordHash(null)
+                        .role("USER")
+                        .build());
+
+        // 3) Tạo session PawsTag (cookie HttpOnly set ở controller).
+        String token = jwtService.generateToken(owner);
+        return new AuthSession(token, OwnerResponse.from(owner));
+    }
+
+    /**
+     * Tìm-hoặc-tạo owner cho social login (Google/Facebook), chống race khi 2 request
+     * đầu tiên của cùng tài khoản chạy song song: bên thua unique constraint
+     * (google_id/facebook_id/email) sẽ đọc lại bản ghi bên kia vừa tạo thay vì trả 500.
+     *
+     * CHỦ Ý không có @Transactional bao ngoài: mỗi thao tác repository tự có transaction
+     * riêng, nhờ vậy DataIntegrityViolationException nổi lên ngay tại save (không phải
+     * lúc commit) và lần đọc lại sau đó không dính transaction rollback-only.
+     *
+     * @param byProviderId lookup theo định danh provider (google_id/facebook_id)
+     * @param email        email đã verify từ provider — null nếu provider không trả (Facebook)
+     * @param linkExisting gắn định danh provider vào owner sẵn có tìm thấy theo email
+     * @param createNew    dựng owner mới khi chưa có ai khớp
+     */
+    private Owner findOrCreateSocialOwner(Supplier<Optional<Owner>> byProviderId,
+                                          String email,
+                                          UnaryOperator<Owner> linkExisting,
+                                          Supplier<Owner> createNew) {
+        Owner owner = byProviderId.get().orElse(null);
+        if (owner != null) return owner;
+
+        try {
+            Owner byEmail = (email != null) ? ownerRepository.findByEmail(email).orElse(null) : null;
+            return ownerRepository.save(byEmail != null ? linkExisting.apply(byEmail) : createNew.get());
+        } catch (DataIntegrityViolationException e) {
+            // Request song song đã tạo/link trước → dùng bản ghi đã có.
+            return byProviderId.get()
+                    .or(() -> email != null ? ownerRepository.findByEmail(email) : Optional.empty())
+                    .orElseThrow(() -> e);
+        }
     }
 
     @Override

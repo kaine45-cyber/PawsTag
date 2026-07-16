@@ -16,5 +16,5 @@ public interface ScanService {
     ScanResultResponse record(ScanRequest request);
 
     /** Lịch sử quét của owner; lọc theo pet nếu petId != null. */
-    List<ScanLogResponse> history(String ownerEmail, Long petId);
+    List<ScanLogResponse> history(String ownerPrincipal, Long petId);
 }

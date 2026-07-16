@@ -12,11 +12,11 @@ public interface NotificationService {
     /** Tạo thông báo (gọi nội bộ, ví dụ khi pet bị quét). */
     void create(Owner owner, Pet pet, NotificationType type, String title, String message);
 
-    List<NotificationResponse> list(String ownerEmail);
+    List<NotificationResponse> list(String ownerPrincipal);
 
-    NotificationResponse markRead(String ownerEmail, Long id);
+    NotificationResponse markRead(String ownerPrincipal, Long id);
 
-    int markAllRead(String ownerEmail);
+    int markAllRead(String ownerPrincipal);
 
-    long clearAll(String ownerEmail);
+    long clearAll(String ownerPrincipal);
 }

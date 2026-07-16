@@ -13,6 +13,8 @@ import vn.pawstag.entity.Owner;
 import vn.pawstag.enums.AuthProvider;
 import vn.pawstag.exception.BadRequestException;
 import vn.pawstag.repository.OwnerRepository;
+import vn.pawstag.security.FacebookTokenVerifier;
+import vn.pawstag.security.GoogleNonceService;
 import vn.pawstag.security.GoogleTokenVerifier;
 import vn.pawstag.security.GoogleTokenVerifier.Account;
 import vn.pawstag.security.JwtService;
@@ -44,23 +46,28 @@ class AuthServiceGoogleTest {
     @Mock PasswordResetService passwordResetService;
     @Mock EmailService emailService;
     @Mock GoogleTokenVerifier googleTokenVerifier;
+    @Mock GoogleNonceService googleNonceService;
+    @Mock FacebookTokenVerifier facebookTokenVerifier;
 
     AuthServiceImpl service;
 
     private static final String SUB = "google-sub-123";
     private static final String EMAIL = "guser@pawstag.vn";
+    private static final String NONCE = "nonce-abc";
     private static final GoogleLoginRequest REQ = new GoogleLoginRequest("id-token");
 
     @BeforeEach
     void setUp() {
         service = new AuthServiceImpl(ownerRepository, passwordEncoder, jwtService,
-                loginAttemptService, passwordResetService, emailService, googleTokenVerifier, 10);
+                loginAttemptService, passwordResetService, emailService,
+                googleTokenVerifier, googleNonceService, facebookTokenVerifier, 10);
         // Chỉ các test thành công mới gọi generateToken → lenient để 2 test reject không bị strict-stubbing.
         lenient().when(jwtService.generateToken(any(Owner.class))).thenReturn("jwt");
+        lenient().when(googleNonceService.consume(NONCE)).thenReturn(true);
     }
 
     private Account verified() {
-        return new Account(SUB, EMAIL, true, "Google User", "https://pic/avatar.png");
+        return new Account(SUB, EMAIL, true, "Google User", "https://pic/avatar.png", NONCE);
     }
 
     @Test
@@ -130,7 +137,20 @@ class AuthServiceGoogleTest {
     @Test
     void googleLogin_emailNotVerified_isRejected() {
         when(googleTokenVerifier.verify("id-token"))
-                .thenReturn(new Account(SUB, EMAIL, false, "Google User", "https://pic/avatar.png"));
+                .thenReturn(new Account(SUB, EMAIL, false, "Google User", "https://pic/avatar.png", NONCE));
+
+        assertThatThrownBy(() -> service.googleLogin(REQ)).isInstanceOf(BadRequestException.class);
+
+        verify(ownerRepository, never()).save(any());
+        verify(ownerRepository, never()).findByGoogleId(any());
+        // Email chưa verify bị chặn TRƯỚC khi consume → không đốt mất nonce của user.
+        verify(googleNonceService, never()).consume(any());
+    }
+
+    @Test
+    void googleLogin_replayedOrMissingNonce_isRejected() {
+        when(googleTokenVerifier.verify("id-token")).thenReturn(verified());
+        when(googleNonceService.consume(NONCE)).thenReturn(false); // đã dùng / không do backend phát
 
         assertThatThrownBy(() -> service.googleLogin(REQ)).isInstanceOf(BadRequestException.class);
 

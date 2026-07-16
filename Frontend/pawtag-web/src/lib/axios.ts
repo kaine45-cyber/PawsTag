@@ -7,6 +7,10 @@ const api = axios.create({
   baseURL: apiBaseUrl,
   timeout: 10_000,
   withCredentials: true,
+  // CSRF double-submit: backend set cookie XSRF-TOKEN (đọc được từ JS),
+  // axios tự gắn header X-XSRF-TOKEN cho request cùng-origin.
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
 api.interceptors.response.use(

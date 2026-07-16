@@ -21,6 +21,10 @@ export const authService = {
   googleLogin: async (credential: string): Promise<AuthData> =>
     (await api.post("/auth/google", { credential })).data.data,
 
+  // Gửi Facebook access token — backend verify với Graph API rồi set cookie HttpOnly.
+  facebookLogin: async (accessToken: string): Promise<AuthData> =>
+    (await api.post("/auth/facebook", { accessToken })).data.data,
+
   me: async (): Promise<User> => (await api.get("/owners/me")).data.data,
 
   logout: () => api.post("/auth/logout").catch(() => {}),

@@ -13,6 +13,6 @@ public interface GoogleTokenVerifier {
      */
     Account verify(String credential);
 
-    /** Các claim cần dùng từ Google ID token đã verify. */
-    record Account(String sub, String email, boolean emailVerified, String name, String picture) {}
+    /** Các claim cần dùng từ Google ID token đã verify. nonce = claim chống replay (có thể null). */
+    record Account(String sub, String email, boolean emailVerified, String name, String picture, String nonce) {}
 }

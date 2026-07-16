@@ -104,8 +104,8 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
-    public TagResponse activate(String ownerEmail, String publicCode, Long petId) {
-        Owner owner = requireOwner(ownerEmail);
+    public TagResponse activate(String ownerPrincipal, String publicCode, Long petId) {
+        Owner owner = requireOwner(ownerPrincipal);
         Pet pet = petRepository.findByIdAndOwnerId(petId, owner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pet not found"));
         return TagResponse.from(assignInternal(publicCode, pet));
@@ -113,8 +113,8 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
-    public TagResponse markNfc(String ownerEmail, Long tagId, boolean enabled) {
-        Owner owner = requireOwner(ownerEmail);
+    public TagResponse markNfc(String ownerPrincipal, Long tagId, boolean enabled) {
+        Owner owner = requireOwner(ownerPrincipal);
         Tag tag = tagRepository.findByIdAndPet_Owner_Id(tagId, owner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tag not found"));
         tag.setNfcLinked(enabled);
@@ -124,14 +124,14 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TagResponse> listMine(String ownerEmail) {
-        Owner owner = requireOwner(ownerEmail);
+    public List<TagResponse> listMine(String ownerPrincipal) {
+        Owner owner = requireOwner(ownerPrincipal);
         return tagRepository.findByPet_Owner_IdOrderByCreatedAtDesc(owner.getId())
                 .stream().map(TagResponse::from).toList();
     }
 
-    private Owner requireOwner(String email) {
-        return ownerRepository.findByEmail(email)
+    private Owner requireOwner(String principal) {
+        return ownerRepository.findByPrincipal(principal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
     }
 

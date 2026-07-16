@@ -8,6 +8,7 @@ import { authService } from "@/services/auth.service";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n/LanguageContext";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import FacebookSignInButton from "@/components/auth/FacebookSignInButton";
 
 const CORGI = "/images/corgi.jpg";
 
@@ -35,7 +36,7 @@ const inputClass =
 export default function RegisterPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const { loginWithGoogle } = useAuth();
+  const { loginWithGoogle, loginWithFacebook } = useAuth();
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -88,6 +89,20 @@ export default function RegisterPage() {
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg || t("rg.googleFailed"));
+      setStep(1);
+      setLoading(false);
+    }
+  }
+
+  async function handleFacebook(accessToken: string) {
+    setError("");
+    setLoading(true);
+    try {
+      await loginWithFacebook(accessToken);
+      router.replace("/pet/create");
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || t("rg.facebookFailed"));
       setStep(1);
       setLoading(false);
     }
@@ -179,10 +194,7 @@ export default function RegisterPage() {
             {/* Social */}
             <div className="flex flex-col gap-3 mb-5">
               <GoogleSignInButton onCredential={handleGoogle} onError={() => setError(t("rg.googleFailed"))} text="signup_with" />
-              <button type="button" onClick={() => setError(t("rg.socialSoon"))} className="flex items-center justify-center gap-2 h-[52px] rounded-2xl border border-[#EEF2F7] bg-white transition-all active:scale-95">
-                <span className="text-[18px]">📘</span>
-                <span className="text-[13px] font-semibold text-[#1A2332] font-body">{t("rg.facebook")}</span>
-              </button>
+              <FacebookSignInButton onToken={handleFacebook} onError={() => setError(t("rg.facebookFailed"))} label={t("rg.facebook")} />
             </div>
 
             <div className="flex items-center gap-3 mb-5">

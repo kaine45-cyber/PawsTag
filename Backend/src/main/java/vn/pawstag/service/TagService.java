@@ -22,11 +22,11 @@ public interface TagService {
     BatchTagResponse generateBatch(int quantity);
 
     /** Gán publicCode (UNASSIGNED) vào pet của owner. */
-    TagResponse activate(String ownerEmail, String publicCode, Long petId);
+    TagResponse activate(String ownerPrincipal, String publicCode, Long petId);
 
     /** Đánh dấu nfc_linked. */
-    TagResponse markNfc(String ownerEmail, Long tagId, boolean enabled);
+    TagResponse markNfc(String ownerPrincipal, Long tagId, boolean enabled);
 
     /** Danh sách tag của owner. */
-    List<TagResponse> listMine(String ownerEmail);
+    List<TagResponse> listMine(String ownerPrincipal);
 }

@@ -48,6 +48,7 @@ public class GoogleTokenVerifierImpl implements GoogleTokenVerifier {
                 p.getEmail(),
                 Boolean.TRUE.equals(p.getEmailVerified()),
                 (String) p.get("name"),
-                (String) p.get("picture"));
+                (String) p.get("picture"),
+                (String) p.get("nonce"));
     }
 }

@@ -48,8 +48,8 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public DashboardResponse getDashboard(String ownerEmail) {
-        Owner owner = ownerRepository.findByEmail(ownerEmail)
+    public DashboardResponse getDashboard(String ownerPrincipal) {
+        Owner owner = ownerRepository.findByPrincipal(ownerPrincipal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
 
         List<Pet> pets = petRepository.findByOwnerIdOrderByCreatedAtDesc(owner.getId());

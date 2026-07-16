@@ -32,14 +32,14 @@ public class OwnerServiceImpl implements OwnerService {
 
     @Override
     @Transactional(readOnly = true)
-    public OwnerResponse getMe(String email) {
-        return OwnerResponse.from(require(email));
+    public OwnerResponse getMe(String principal) {
+        return OwnerResponse.from(require(principal));
     }
 
     @Override
     @Transactional
-    public OwnerResponse update(String email, OwnerUpdateRequest request) {
-        Owner owner = require(email);
+    public OwnerResponse update(String principal, OwnerUpdateRequest request) {
+        Owner owner = require(principal);
         if (request.name() != null)  owner.setFullName(request.name().trim());
         if (request.phone() != null) owner.setPhone(request.phone().trim());
         if (request.city() != null)  owner.setCity(request.city().trim());
@@ -48,16 +48,16 @@ public class OwnerServiceImpl implements OwnerService {
 
     @Override
     @Transactional
-    public OwnerResponse setAvatar(String email, MultipartFile file) {
-        Owner owner = require(email);
+    public OwnerResponse setAvatar(String principal, MultipartFile file) {
+        Owner owner = require(principal);
         owner.setAvatarUrl(storageService.store(file, "avatars"));
         return OwnerResponse.from(ownerRepository.save(owner));
     }
 
     @Override
     @Transactional
-    public void changePassword(String email, ChangePasswordRequest request) {
-        Owner owner = require(email);
+    public void changePassword(String principal, ChangePasswordRequest request) {
+        Owner owner = require(principal);
         if (owner.getPasswordHash() == null
                 || !passwordEncoder.matches(request.currentPassword(), owner.getPasswordHash())) {
             throw new BadRequestException("Current password is incorrect");
@@ -68,22 +68,22 @@ public class OwnerServiceImpl implements OwnerService {
 
     @Override
     @Transactional(readOnly = true)
-    public NotificationPrefsResponse getNotifPrefs(String email) {
-        return NotificationPrefsResponse.from(require(email));
+    public NotificationPrefsResponse getNotifPrefs(String principal) {
+        return NotificationPrefsResponse.from(require(principal));
     }
 
     @Override
     @Transactional
-    public NotificationPrefsResponse updateNotifPrefs(String email, NotificationPrefsRequest req) {
-        Owner owner = require(email);
+    public NotificationPrefsResponse updateNotifPrefs(String principal, NotificationPrefsRequest req) {
+        Owner owner = require(principal);
         if (req.scans() != null) owner.setNotifScans(req.scans());
         if (req.lost() != null) owner.setNotifLost(req.lost());
         if (req.updates() != null) owner.setNotifUpdates(req.updates());
         return NotificationPrefsResponse.from(ownerRepository.save(owner));
     }
 
-    private Owner require(String email) {
-        return ownerRepository.findByEmail(email)
+    private Owner require(String principal) {
+        return ownerRepository.findByPrincipal(principal)
                 .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
     }
 }

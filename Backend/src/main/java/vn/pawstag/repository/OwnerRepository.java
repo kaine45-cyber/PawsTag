@@ -11,4 +11,19 @@ public interface OwnerRepository extends JpaRepository<Owner, Long> {
 
     /** Định danh chính khi login Google (theo Google sub lưu ở google_id). */
     Optional<Owner> findByGoogleId(String googleId);
+
+    /** Định danh chính khi login Facebook (email có thể null nên không dùng email). */
+    Optional<Owner> findByFacebookId(String facebookId);
+
+    /**
+     * Tra cứu owner theo principal của security context (= owner id dạng chuỗi, từ JWT subject).
+     * Principal không phải số (token hỏng) → empty, không throw.
+     */
+    default Optional<Owner> findByPrincipal(String principal) {
+        try {
+            return findById(Long.parseLong(principal));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
 }

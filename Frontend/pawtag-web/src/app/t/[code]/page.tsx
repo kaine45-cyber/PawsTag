@@ -12,6 +12,7 @@ import { scanService } from "@/services/scan.service";
 import { petService } from "@/services/pet.service";
 import { shareOrCopy } from "@/lib/share";
 import { getCurrentCoords, GeoError, type GeoErrorKind } from "@/lib/geolocation";
+import { isInAppBrowser, openInBrowserUrl } from "@/lib/browser";
 import { formatAge } from "@/utils/formatter";
 import { useI18n } from "@/i18n/LanguageContext";
 
@@ -205,14 +206,26 @@ export default function ScanProfilePage({ params }: Props) {
               <div className="flex-1"><p className="text-[#22C55E] font-black text-[16px] font-display">{t("ps.locSent")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{coords ? `${coords.lat.toFixed(4)}°, ${coords.lng.toFixed(4)}°` : t("ps.gpsShared")}</p></div>
             </div>
           ) : locState === "denied" ? (
-            <button
-              type="button"
-              onClick={() => { if (geoErr !== "denied") handleSendLocation(false); }}
-              className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444] text-left w-full"
-            >
-              <span className="w-12 h-12 rounded-2xl bg-[#EF4444]/20 flex items-center justify-center shrink-0"><MapPin size={22} className="text-[#EF4444]" /></span>
-              <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{geoErr === "timeout" ? t("ps.locTimeout") : geoErr === "denied" ? t("ps.allowLoc") : t("ps.locUnavailDesc")}</p></div>
-            </button>
+            isInAppBrowser() ? (
+              <div className="flex flex-col gap-3 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444]">
+                <div className="flex items-center gap-4">
+                  <span className="w-12 h-12 rounded-2xl bg-[#EF4444]/20 flex items-center justify-center shrink-0"><MapPin size={22} className="text-[#EF4444]" /></span>
+                  <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{t("ps.inAppBrowser")}</p></div>
+                </div>
+                {openInBrowserUrl() && (
+                  <a href={openInBrowserUrl()!} className="self-center px-5 py-2.5 rounded-xl bg-[#EF4444] text-white font-bold text-[13px] font-display">{t("ps.openInBrowser")}</a>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { if (geoErr !== "denied") handleSendLocation(false); }}
+                className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-[#FEF2F2] border-2 border-[#EF4444] text-left w-full"
+              >
+                <span className="w-12 h-12 rounded-2xl bg-[#EF4444]/20 flex items-center justify-center shrink-0"><MapPin size={22} className="text-[#EF4444]" /></span>
+                <div className="flex-1"><p className="text-[#EF4444] font-bold text-[15px] font-display">{t("ps.locUnavail")}</p><p className="text-[#6B7A8D] text-[13px] font-body">{geoErr === "timeout" ? t("ps.locTimeout") : geoErr === "denied" ? t("ps.allowLoc") : t("ps.locUnavailDesc")}</p></div>
+              </button>
+            )
           ) : (
             <button type="button" onClick={() => handleSendLocation(false)} disabled={locState === "loading"} className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-gradient-to-r from-[#FF7B35] to-[#FFAB7A] shadow-loc active:scale-[0.98] transition-all disabled:opacity-80">
               <span className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">{locState === "loading" ? <Loader2 size={22} color="#fff" className="animate-spin" /> : <MapPin size={22} color="#fff" />}</span>

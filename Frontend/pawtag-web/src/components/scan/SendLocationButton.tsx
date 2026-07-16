@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { MapPin, Check, Loader2 } from "lucide-react";
 import { getCurrentCoords, GeoError, type GeoErrorKind } from "@/lib/geolocation";
+import { isInAppBrowser, openInBrowserUrl } from "@/lib/browser";
 
 type LocationState = "idle" | "loading" | "shared" | "denied";
 
@@ -38,6 +39,23 @@ export function SendLocationButton() {
   }
 
   if (locState === "denied") {
+    if (isInAppBrowser()) {
+      const url = openInBrowserUrl();
+      return (
+        <div className="w-full flex flex-col gap-2 px-4 py-3 rounded-2xl bg-[#FEF2F2] border-2 border-[#EF4444] shadow-card">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-xl bg-[#EF4444]/20 flex items-center justify-center mr-4 shrink-0">
+              <MapPin size={24} className="text-[#EF4444]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[#EF4444] font-bold text-[14px] font-display">Location unavailable</p>
+              <p className="text-[#6B7A8D] text-[12px] font-body">This in-app browser can&apos;t share location — open in Chrome or Safari</p>
+            </div>
+          </div>
+          {url && <a href={url} className="self-center px-4 py-2 rounded-xl bg-[#EF4444] text-white font-bold text-[12px] font-display">Open in browser</a>}
+        </div>
+      );
+    }
     const desc = geoErr === "timeout"
       ? "Getting your location took too long — tap to try again"
       : geoErr === "denied"

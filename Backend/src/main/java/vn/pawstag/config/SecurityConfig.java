@@ -35,9 +35,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // Path=/ bắt buộc: context-path là /api nên mặc định cookie XSRF-TOKEN có
+        // Path=/api → document.cookie ở các trang (/login, /t/..) KHÔNG đọc được
+        // → axios không gắn header X-XSRF-TOKEN → mọi POST auth bị 403.
+        CookieCsrfTokenRepository csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfRepo.setCookiePath("/");
         http
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfRepo)
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
                         .ignoringRequestMatchers("/scans"))
                 .cors(Customizer.withDefaults())

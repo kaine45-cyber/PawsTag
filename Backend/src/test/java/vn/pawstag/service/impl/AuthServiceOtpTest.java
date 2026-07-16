@@ -11,8 +11,6 @@ import vn.pawstag.dto.request.ResetPasswordRequest;
 import vn.pawstag.entity.Owner;
 import vn.pawstag.enums.AuthProvider;
 import vn.pawstag.exception.BadRequestException;
-import vn.pawstag.exception.EmailDeliveryException;
-import vn.pawstag.exception.OtpCooldownException;
 import vn.pawstag.exception.TooManyAttemptsException;
 import vn.pawstag.repository.OwnerRepository;
 import vn.pawstag.security.FacebookTokenVerifier;
@@ -86,88 +84,90 @@ class AuthServiceOtpTest {
     }
 
     @Test
-    void forgotPassword_unknownEmail_returnsOkWithoutRevealing() {
+    void forgotPassword_unknownEmail_returnsSameResponseAndPerformsDummyHash() {
         when(ownerRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
         int cooldown = service.forgotPassword(new ForgotPasswordRequest(EMAIL));
 
         assertThat(cooldown).isEqualTo(COOLDOWN_SECONDS);
         verify(passwordResetService, never()).issue(anyString());
+        verify(passwordResetService).performDummyHash();
         verifyNoInteractions(emailService);
     }
 
     @Test
-    void forgotPassword_withinCooldown_throwsRetryAfterAndDoesNotSendEmail() {
+    void forgotPassword_withinCooldown_returnsSameResponseAndDoesNotSendEmail() {
         when(ownerRepository.findByEmail(EMAIL)).thenReturn(Optional.of(localOwner()));
         when(passwordResetService.issue(EMAIL)).thenReturn(PasswordResetService.IssueResult.cooldown(42));
 
-        assertThatThrownBy(() -> service.forgotPassword(new ForgotPasswordRequest(EMAIL)))
-                .isInstanceOf(OtpCooldownException.class)
-                .hasMessageContaining("42");
+        int cooldown = service.forgotPassword(new ForgotPasswordRequest(EMAIL));
 
+        assertThat(cooldown).isEqualTo(COOLDOWN_SECONDS);
+        verify(passwordResetService).performDummyHash();
         verifyNoInteractions(emailService);
     }
 
     @Test
-    void forgotPassword_whenEmailDeliveryFails_throwsServiceError() {
+    void forgotPassword_whenEmailSchedulingFails_stillReturnsGenericResponse() {
         when(ownerRepository.findByEmail(EMAIL)).thenReturn(Optional.of(localOwner()));
         when(passwordResetService.issue(EMAIL)).thenReturn(PasswordResetService.IssueResult.issued("123456"));
         doThrow(new RuntimeException("smtp down"))
                 .when(emailService).sendPasswordResetOtp(eq(EMAIL), eq("123456"), anyInt());
 
-        assertThatThrownBy(() -> service.forgotPassword(new ForgotPasswordRequest(EMAIL)))
-                .isInstanceOf(EmailDeliveryException.class)
-                .hasMessageContaining("Could not send reset code");
+        assertThat(service.forgotPassword(new ForgotPasswordRequest(EMAIL)))
+                .isEqualTo(COOLDOWN_SECONDS);
     }
 
     @Test
-    void resetPassword_validOtp_setsNewPassword() {
-        Owner owner = localOwner();
-        when(passwordResetService.verify(EMAIL, "123456")).thenReturn(OtpResult.OK);
-        when(ownerRepository.findByEmail(EMAIL)).thenReturn(Optional.of(owner));
-        when(passwordEncoder.encode("newpass123")).thenReturn("new-hash");
+    void resetPassword_validOtp_clearsLoginLockAndSendsSecurityNotice() {
+        when(passwordResetService.resetPassword(EMAIL, "123456", "newpass123")).thenReturn(OtpResult.OK);
 
         service.resetPassword(new ResetPasswordRequest(EMAIL, "123456", "newpass123"));
 
-        assertThat(owner.getPasswordHash()).isEqualTo("new-hash");
-        verify(ownerRepository).save(owner);
+        verify(loginAttemptService).loginSucceeded(EMAIL);
+        verify(emailService).sendPasswordChangedNotice(EMAIL);
     }
 
     @Test
-    void resetPassword_googleAccountWithoutPassword_canSetLocalPassword() {
-        Owner google = new Owner();
-        google.setId(2L);
-        google.setEmail(EMAIL);
-        google.setPasswordHash(null);
-        google.setAuthProvider(AuthProvider.GOOGLE);
-        when(passwordResetService.verify(EMAIL, "123456")).thenReturn(OtpResult.OK);
-        when(ownerRepository.findByEmail(EMAIL)).thenReturn(Optional.of(google));
-        when(passwordEncoder.encode("newpass123")).thenReturn("new-hash");
+    void resetPassword_securityNoticeFailure_doesNotFailSuccessfulReset() {
+        when(passwordResetService.resetPassword(EMAIL, "123456", "newpass123")).thenReturn(OtpResult.OK);
+        doThrow(new RuntimeException("executor unavailable"))
+                .when(emailService).sendPasswordChangedNotice(EMAIL);
 
         service.resetPassword(new ResetPasswordRequest(EMAIL, "123456", "newpass123"));
 
-        assertThat(google.getPasswordHash()).isEqualTo("new-hash");
-        verify(ownerRepository).save(google);
+        verify(loginAttemptService).loginSucceeded(EMAIL);
     }
 
     @Test
     void resetPassword_invalidOtp_throwsBadRequest() {
-        when(passwordResetService.verify(EMAIL, "000000")).thenReturn(OtpResult.INVALID);
+        when(passwordResetService.resetPassword(EMAIL, "000000", "newpass123")).thenReturn(OtpResult.INVALID);
 
         assertThatThrownBy(() -> service.resetPassword(new ResetPasswordRequest(EMAIL, "000000", "newpass123")))
                 .isInstanceOf(BadRequestException.class);
 
-        verify(ownerRepository, never()).save(any());
+        verify(emailService, never()).sendPasswordChangedNotice(anyString());
     }
 
     @Test
     void resetPassword_tooManyAttempts_throwsTooMany() {
-        when(passwordResetService.verify(EMAIL, "000000")).thenReturn(OtpResult.TOO_MANY_ATTEMPTS);
+        when(passwordResetService.resetPassword(EMAIL, "000000", "newpass123"))
+                .thenReturn(OtpResult.TOO_MANY_ATTEMPTS);
 
         assertThatThrownBy(() -> service.resetPassword(new ResetPasswordRequest(EMAIL, "000000", "newpass123")))
                 .isInstanceOf(TooManyAttemptsException.class);
 
-        verify(ownerRepository, never()).save(any());
-        verify(passwordEncoder, never()).encode(anyString());
+        verify(emailService, never()).sendPasswordChangedNotice(anyString());
+    }
+
+    @Test
+    void resetPassword_overBcryptByteLimit_rejectedBeforeOtpIsConsumed() {
+        String tooLong = "é".repeat(40); // 40 ký tự nhưng 80 byte UTF-8
+
+        assertThatThrownBy(() -> service.resetPassword(new ResetPasswordRequest(EMAIL, "123456", tooLong)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("72 UTF-8 bytes");
+
+        verify(passwordResetService, never()).resetPassword(anyString(), anyString(), anyString());
     }
 }

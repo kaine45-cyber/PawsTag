@@ -70,6 +70,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<ForgotPasswordResponse>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         int cooldownSeconds = authService.forgotPassword(request);
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(cooldownSeconds))
                 .body(ApiResponse.ok(
                         new ForgotPasswordResponse(cooldownSeconds),
@@ -78,9 +79,13 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     @Operation(summary = "Verify OTP and set a new password")
-    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request,
+                                                            HttpServletRequest http) {
         authService.resetPassword(request);
-        return ApiResponse.ok(null, "Password reset successfully");
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.SET_COOKIE, clearCookie(http).toString())
+                .body(ApiResponse.ok(null, "Password reset successfully"));
     }
 
     @PostMapping("/logout")

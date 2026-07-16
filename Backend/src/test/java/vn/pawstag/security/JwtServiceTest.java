@@ -25,6 +25,7 @@ class JwtServiceTest {
         o.setId(42L);
         o.setEmail("a@b.com");
         o.setRole("USER");
+        o.setAuthVersion(3);
         return o;
     }
 
@@ -34,6 +35,8 @@ class JwtServiceTest {
 
         assertThat(jwtService.isValid(token)).isTrue();
         assertThat(jwtService.extractOwnerId(token)).isEqualTo("42");
+        assertThat(jwtService.isValidForAuthVersion(token, 3)).isTrue();
+        assertThat(jwtService.isValidForAuthVersion(token, 4)).isFalse();
     }
 
     @Test
@@ -50,6 +53,8 @@ class JwtServiceTest {
 
         assertThat(jwtService.isValid(legacy)).isTrue();
         assertThat(jwtService.extractOwnerId(legacy)).isEqualTo("42");
+        assertThat(jwtService.isValidForAuthVersion(legacy, 0)).isTrue();
+        assertThat(jwtService.isValidForAuthVersion(legacy, 1)).isFalse();
     }
 
     @Test

@@ -10,7 +10,10 @@ import java.time.Instant;
  * Chỉ lưu HASH của OTP. Bảng: password_reset_otps (Flyway V12).
  */
 @Entity
-@Table(name = "password_reset_otps")
+@Table(
+        name = "password_reset_otps",
+        uniqueConstraints = @UniqueConstraint(name = "uq_pwd_reset_email", columnNames = "email")
+)
 @Getter
 @Setter
 @NoArgsConstructor

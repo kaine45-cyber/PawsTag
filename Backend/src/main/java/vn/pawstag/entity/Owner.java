@@ -33,6 +33,14 @@ public class Owner {
     @Column(name = "password_hash")
     private String passwordHash;
 
+    /**
+     * Tăng sau các thay đổi thông tin xác thực nhạy cảm (ví dụ reset mật khẩu).
+     * JWT mang phiên bản này; token cũ lập tức mất hiệu lực khi giá trị thay đổi.
+     */
+    @Builder.Default
+    @Column(name = "auth_version", nullable = false)
+    private int authVersion = 0;
+
     @Column(name = "full_name")
     private String fullName;
 

@@ -1,5 +1,6 @@
 server:
   port: ${PORT:8082}
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
   servlet:
     context-path: /api
 
@@ -73,7 +74,8 @@ app:
     max-attempts: ${OTP_MAX_ATTEMPTS:5}
     resend-cooldown-seconds: ${OTP_RESEND_COOLDOWN_SECONDS:60}
   mail:
-    from: ${MAIL_FROM:PawsTag <no-reply@pawstag.vn>}
+    # Mặc định dùng chính tài khoản SMTP để tránh Gmail/provider từ chối sender giả.
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
   google:
     client-id: ${GOOGLE_CLIENT_ID:}   # OAuth 2.0 Web Client ID — bắt buộc để verify Google ID token
   facebook:

@@ -107,7 +107,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 shadow-form flex flex-col gap-4">
           {/* Social */}
           <div className="flex flex-col gap-3">
-            <GoogleSignInButton onCredential={handleGoogle} onError={() => setError(t("lg.googleFailed"))} text="signin_with" />
+            <GoogleSignInButton onCredential={handleGoogle} text="signin_with" />
             <FacebookSignInButton onToken={handleFacebook} onError={() => setError(t("lg.facebookFailed"))} label="Facebook" />
           </div>
 

@@ -194,7 +194,7 @@ export default function RegisterPage() {
 
             {/* Social */}
             <div className="flex flex-col gap-3 mb-5">
-              <GoogleSignInButton onCredential={handleGoogle} onError={() => setError(t("rg.googleFailed"))} text="signup_with" />
+              <GoogleSignInButton onCredential={handleGoogle} text="signup_with" />
               <FacebookSignInButton onToken={handleFacebook} onError={() => setError(t("rg.facebookFailed"))} label={t("rg.facebook")} />
             </div>
 

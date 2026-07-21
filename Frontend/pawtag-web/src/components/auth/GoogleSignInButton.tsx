@@ -45,7 +45,6 @@ function loadGsi(): Promise<void> {
 interface Props {
   /** Nhận Google ID token (credential) — gửi lên POST /auth/google để backend verify. */
   onCredential: (credential: string) => void;
-  onError?: () => void;
   text?: "signin_with" | "signup_with" | "continue_with";
 }
 
@@ -54,11 +53,10 @@ interface Props {
  * GIS trả credential (ID token) → gọi onCredential. Credential KHÔNG lưu vào localStorage.
  * Ẩn nút nếu chưa cấu hình NEXT_PUBLIC_GOOGLE_CLIENT_ID hoặc GIS load lỗi.
  */
-export default function GoogleSignInButton({ onCredential, onError, text = "continue_with" }: Props) {
+export default function GoogleSignInButton({ onCredential, text = "continue_with" }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   const cbRef = useRef(onCredential);
-  const errRef = useRef(onError);
-  useEffect(() => { cbRef.current = onCredential; errRef.current = onError; }, [onCredential, onError]);
+  useEffect(() => { cbRef.current = onCredential; }, [onCredential]);
 
   // Bắt đầu bằng cấu hình client id (hằng số build-time) → tránh setState đồng bộ trong effect.
   const [available, setAvailable] = useState(!!CLIENT_ID);
@@ -87,7 +85,8 @@ export default function GoogleSignInButton({ onCredential, onError, text = "cont
           text, shape: "pill", logo_alignment: "center", width,
         });
       })
-      .catch(() => { if (!cancelled) { setAvailable(false); errRef.current?.(); } });
+      // Google sign-in is optional, so initialization errors only hide this button.
+      .catch(() => { if (!cancelled) setAvailable(false); });
     return () => { cancelled = true; };
   }, [text]);
 

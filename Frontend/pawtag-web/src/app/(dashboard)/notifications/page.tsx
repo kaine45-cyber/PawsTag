@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { notificationService } from "@/services/notification.service";
 import { useI18n } from "@/i18n/LanguageContext";
 import { localizeNotifTitle, localizeNotifBody, localizeRelativeTime } from "@/i18n/localizeNotification";
+import { ROUTES } from "@/constants/routes";
 import type { Notification } from "@/types";
 
 /** Icon emoji khi không có ảnh pet — suy từ tiêu đề / loại. */
@@ -65,7 +66,7 @@ export default function NotificationsPage() {
       <header className="bg-white px-5 pt-4 pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <button type="button" aria-label="Back" onClick={() => router.back()} className="w-11 h-11 rounded-full bg-[#EEF2FB] flex items-center justify-center active:scale-90">
+            <button type="button" aria-label="Back" onClick={() => router.replace(ROUTES.dashboard)} className="w-11 h-11 rounded-full bg-[#EEF2FB] flex items-center justify-center active:scale-90">
               <ArrowLeft size={18} className="text-[#1A2332]" />
             </button>
             <div>

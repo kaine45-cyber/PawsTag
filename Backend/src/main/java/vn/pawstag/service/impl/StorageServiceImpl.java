@@ -112,10 +112,17 @@ public class StorageServiceImpl implements StorageService {
     }
 
     private HttpRequest.Builder requestBuilder(String path) {
-        return HttpRequest.newBuilder(URI.create(storageApiUrl + path))
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(storageApiUrl + path))
                 .timeout(Duration.ofSeconds(15))
-                // Service Role must remain on the backend. Never expose it through NEXT_PUBLIC_*.
-                .header("Authorization", "Bearer " + serviceRoleKey)
+                // The key must remain on the backend. Never expose it through NEXT_PUBLIC_*.
                 .header("apikey", serviceRoleKey);
+
+        // New Supabase keys (sb_secret_...) are opaque API keys, not JWTs. Sending
+        // one as Bearer can make the gateway reject it as an invalid JWT. Legacy
+        // service_role keys are JWTs and still use the Authorization header.
+        if (!serviceRoleKey.startsWith("sb_")) {
+            builder.header("Authorization", "Bearer " + serviceRoleKey);
+        }
+        return builder;
     }
 }

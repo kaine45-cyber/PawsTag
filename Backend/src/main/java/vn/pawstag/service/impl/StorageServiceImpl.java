@@ -1,6 +1,8 @@
 package vn.pawstag.service.impl;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.pawstag.exception.BadRequestException;
@@ -21,6 +23,7 @@ import java.util.regex.Pattern;
 @Service
 public class StorageServiceImpl implements StorageService {
 
+    private static final Logger log = LoggerFactory.getLogger(StorageServiceImpl.class);
     private static final Set<String> ALLOWED = Set.of("image/jpeg", "image/png", "image/webp");
     private static final Pattern BUCKET_NAME = Pattern.compile("[a-z0-9][a-z0-9-]{1,62}");
 
@@ -65,9 +68,9 @@ public class StorageServiceImpl implements StorageService {
                     .header("Content-Type", contentType)
                     .PUT(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
                     .build();
-            HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() / 100 != 2) {
-                throw new BadRequestException("Could not upload image. Please try again.");
+                throw storageFailure("upload", response);
             }
         } catch (IOException e) {
             throw new BadRequestException("Could not upload image. Please try again.");
@@ -97,9 +100,12 @@ public class StorageServiceImpl implements StorageService {
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(payload))
                         .build();
-                HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-                if (response.statusCode() / 100 != 2 && response.statusCode() != 409) {
-                    throw new BadRequestException("Image storage is unavailable. Please try again later.");
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                // Supabase Storage versions differ here: some return 409 and
+                // others return 400 + BucketAlreadyExists for an existing
+                // bucket. Either response means the bucket is ready to use.
+                if (response.statusCode() / 100 != 2 && !bucketAlreadyExists(response)) {
+                    throw storageFailure("bucket setup", response);
                 }
                 bucketReady.set(true);
             } catch (IOException e) {
@@ -124,5 +130,31 @@ public class StorageServiceImpl implements StorageService {
             builder.header("Authorization", "Bearer " + serviceRoleKey);
         }
         return builder;
+    }
+
+    /** Logs a safe diagnostic without exposing API keys or a file's contents. */
+    private BadRequestException storageFailure(String operation, HttpResponse<String> response) {
+        int status = response.statusCode();
+        String providerMessage = response.body() == null ? "" : response.body()
+                .replaceAll("[\\r\\n]+", " ")
+                .replaceAll("(?i)(apikey|authorization|bearer)\\s*[:=]\\s*[^,\\s]+", "$1=[redacted]");
+        log.warn("Supabase Storage {} failed with HTTP {}: {}", operation, status,
+                providerMessage.substring(0, Math.min(providerMessage.length(), 300)));
+
+        if (status == 401 || status == 403) {
+            return new BadRequestException("Image storage credentials were rejected. Please contact support.");
+        }
+        if (status == 404) {
+            return new BadRequestException("Image storage bucket was not found. Please contact support.");
+        }
+        return new BadRequestException("Image storage is unavailable. Please try again later.");
+    }
+
+    private boolean bucketAlreadyExists(HttpResponse<String> response) {
+        if (response.statusCode() == 409) return true;
+        String body = response.body();
+        if (body == null) return false;
+        String normalized = body.toLowerCase();
+        return normalized.contains("bucketalreadyexists") || normalized.contains("bucket already exists");
     }
 }

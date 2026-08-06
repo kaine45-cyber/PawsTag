@@ -12,6 +12,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
+      // Protected pages require a valid session. This is separate from the
+      // fixed in-app Back buttons, which never rely on browser history.
       router.replace("/login");
     }
   }, [isLoggedIn, isLoading, router]);

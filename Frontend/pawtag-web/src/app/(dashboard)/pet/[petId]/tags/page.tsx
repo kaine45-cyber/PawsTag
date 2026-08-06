@@ -97,7 +97,7 @@ export default function PetTagsPage({ params }: { params: Promise<{ petId: strin
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => router.back()} aria-label="Back" className="w-10 h-10 rounded-full bg-white shadow-card flex items-center justify-center transition-all active:scale-90">
+        <button type="button" onClick={() => router.replace(ROUTES.petDetail(petId))} aria-label="Back" className="w-10 h-10 rounded-full bg-white shadow-card flex items-center justify-center transition-all active:scale-90">
           <ArrowLeft size={18} className="text-[#1A2332]" />
         </button>
         <div>

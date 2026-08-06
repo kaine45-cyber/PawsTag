@@ -151,7 +151,7 @@ export default function CreatePetPage() {
           <button
             type="button"
             aria-label="Back"
-            onClick={() => (step === 1 ? router.back() : setStep((s) => s - 1))}
+            onClick={() => (step === 1 ? router.replace(ROUTES.petList) : setStep((s) => s - 1))}
             className="w-11 h-11 rounded-full bg-[#EEF2FB] flex items-center justify-center active:scale-90"
           >
             <ArrowLeft size={18} className="text-[#1A2332]" />

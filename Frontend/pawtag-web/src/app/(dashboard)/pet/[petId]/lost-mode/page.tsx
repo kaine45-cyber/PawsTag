@@ -110,7 +110,7 @@ export default function LostModePage({ params }: { params: Promise<{ petId: stri
       {/* Header */}
       <header className={`px-5 pt-4 pb-4 ${active ? "bg-white border-b border-[#EF4444]/10" : "bg-white"}`}>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full bg-[#EEF2FB] flex items-center justify-center active:scale-90"><ArrowLeft size={18} className="text-[#1A2332]" /></button>
+          <button type="button" onClick={() => router.replace(ROUTES.petDetail(petId))} aria-label="Back" className="w-11 h-11 rounded-full bg-[#EEF2FB] flex items-center justify-center active:scale-90"><ArrowLeft size={18} className="text-[#1A2332]" /></button>
           <div>
             <h1 className={`text-[22px] font-black font-display leading-none flex items-center gap-2 ${active ? "text-[#EF4444]" : "text-[#1A2332]"}`}>
               {active && <span>🚨</span>}{active ? t("lost.titleActive") : t("lost.title")}

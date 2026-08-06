@@ -65,28 +65,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadPets]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { owner } = await authService.login(email, password);
+    await authService.login(email, password);
+    const owner = await authService.me();
     setUser(owner);
     setIsLoggedIn(true);
     await loadPets();
   }, [loadPets]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    const { owner } = await authService.register(name, email, password);
+    await authService.register(name, email, password);
+    const owner = await authService.me();
     setUser(owner);
     setIsLoggedIn(true);
     setPets([]);
   }, []);
 
   const loginWithGoogle = useCallback(async (credential: string) => {
-    const { owner } = await authService.googleLogin(credential);
+    await authService.googleLogin(credential);
+    const owner = await authService.me();
     setUser(owner);
     setIsLoggedIn(true);
     await loadPets();
   }, [loadPets]);
 
   const loginWithFacebook = useCallback(async (accessToken: string) => {
-    const { owner } = await authService.facebookLogin(accessToken);
+    await authService.facebookLogin(accessToken);
+    const owner = await authService.me();
     setUser(owner);
     setIsLoggedIn(true);
     await loadPets();

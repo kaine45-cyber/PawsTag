@@ -46,8 +46,10 @@ SPRING_DATASOURCE_USERNAME=postgres-or-the-user-shown-by-supabase
 SPRING_DATASOURCE_PASSWORD=your-supabase-password
 JWT_SECRET=replace-with-a-long-random-secret-at-least-32-bytes
 CORS_ORIGINS=https://your-vercel-app.vercel.app
-UPLOAD_BASE_URL=https://your-render-service.onrender.com/api
 GOONG_API_KEY=your-goong-rest-api-key
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+SUPABASE_STORAGE_BUCKET=pawstag-media
 ```
 
 Optional environment variables:
@@ -105,9 +107,11 @@ If `GOONG_API_KEY` is empty, local development falls back to Nominatim.
 
 ## Notes
 
-Render's local filesystem is ephemeral. Uploaded pet/avatar images stored in
-`UPLOAD_DIR` can disappear after restarts or redeploys. For production, move
-uploads to object storage later.
+Pet and owner images are uploaded to Supabase Storage. Configure `SUPABASE_URL`
+and the backend-only `SUPABASE_SERVICE_ROLE_KEY` in Render; never expose this
+key in frontend variables. On the first upload, PawsTag creates the public
+`SUPABASE_STORAGE_BUCKET` (default: `pawstag-media`) and saves its public URL
+in the existing `photo_url` / `avatar_url` database columns.
 
 ## Checks
 

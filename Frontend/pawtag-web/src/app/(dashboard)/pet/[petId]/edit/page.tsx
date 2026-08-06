@@ -109,7 +109,7 @@ export default function EditPetPage({ params }: { params: Promise<{ petId: strin
         microchipId: f.microchipId,
         emergencyContacts,
       });
-      if (photoFile) { try { await petService.uploadPhoto(petId, photoFile); } catch { /* giữ */ } }
+      if (photoFile) await petService.uploadPhoto(petId, photoFile);
       await refreshPets();
       router.push(ROUTES.petDetail(petId));
     } catch (err) {

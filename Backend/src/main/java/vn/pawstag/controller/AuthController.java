@@ -22,7 +22,6 @@ import vn.pawstag.dto.request.LoginRequest;
 import vn.pawstag.dto.request.RegisterRequest;
 import vn.pawstag.dto.request.ResetPasswordRequest;
 import vn.pawstag.dto.response.ApiResponse;
-import vn.pawstag.dto.response.AuthResponse;
 import vn.pawstag.dto.response.AuthSession;
 import vn.pawstag.dto.response.ForgotPasswordResponse;
 import vn.pawstag.dto.response.GoogleNonceResponse;
@@ -53,15 +52,15 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register with email and password")
-    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request,
-                                                              HttpServletRequest http) {
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request,
+                                                      HttpServletRequest http) {
         return authenticated(authService.register(request), "Registered", HttpStatus.CREATED, http);
     }
 
     @PostMapping("/login")
     @Operation(summary = "Login with email and password")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request,
-                                                           HttpServletRequest http) {
+    public ResponseEntity<ApiResponse<Void>> login(@Valid @RequestBody LoginRequest request,
+                                                   HttpServletRequest http) {
         return authenticated(authService.login(request), "Logged in", HttpStatus.OK, http);
     }
 
@@ -115,25 +114,30 @@ public class AuthController {
 
     @PostMapping("/google")
     @Operation(summary = "Login/Register with a Google ID token")
-    public ResponseEntity<ApiResponse<AuthResponse>> google(@Valid @RequestBody GoogleLoginRequest request,
-                                                            HttpServletRequest http) {
+    public ResponseEntity<ApiResponse<Void>> google(@Valid @RequestBody GoogleLoginRequest request,
+                                                    HttpServletRequest http) {
         return authenticated(authService.googleLogin(request), "Logged in", HttpStatus.OK, http);
     }
 
     @PostMapping("/facebook")
     @Operation(summary = "Login/Register with a Facebook access token")
-    public ResponseEntity<ApiResponse<AuthResponse>> facebook(@Valid @RequestBody FacebookLoginRequest request,
-                                                              HttpServletRequest http) {
+    public ResponseEntity<ApiResponse<Void>> facebook(@Valid @RequestBody FacebookLoginRequest request,
+                                                      HttpServletRequest http) {
         return authenticated(authService.facebookLogin(request), "Logged in", HttpStatus.OK, http);
     }
 
-    private ResponseEntity<ApiResponse<AuthResponse>> authenticated(AuthSession session,
-                                                                    String message,
-                                                                    HttpStatus status,
-                                                                    HttpServletRequest http) {
+    /**
+     * The authentication response deliberately contains no profile or token.
+     * The browser receives the HttpOnly session cookie; the SPA can then fetch
+     * its authenticated profile from GET /owners/me when it actually needs it.
+     */
+    private ResponseEntity<ApiResponse<Void>> authenticated(AuthSession session,
+                                                            String message,
+                                                            HttpStatus status,
+                                                            HttpServletRequest http) {
         return ResponseEntity.status(status)
                 .header(HttpHeaders.SET_COOKIE, authCookie(session.token(), http).toString())
-                .body(ApiResponse.ok(new AuthResponse(session.owner()), message));
+                .body(ApiResponse.ok(null, message));
     }
 
     private ResponseCookie authCookie(String token, HttpServletRequest http) {

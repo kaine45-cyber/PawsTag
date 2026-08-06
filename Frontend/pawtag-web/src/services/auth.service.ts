@@ -2,10 +2,6 @@ import api from "@/lib/axios";
 import axios from "axios";
 import type { User } from "@/types";
 
-export interface AuthData {
-  owner: User;
-}
-
 export interface ForgotPasswordData {
   resendCooldownSeconds: number;
 }
@@ -58,19 +54,19 @@ async function authPost<T>(url: string, body?: unknown): Promise<T> {
 
 // Backend bọc { success, data, message } → unwrap .data.data
 export const authService = {
-  login: async (email: string, password: string): Promise<AuthData> =>
-    authPost<AuthData>("/auth/login", { email, password }),
+  login: async (email: string, password: string): Promise<void> =>
+    authPost<void>("/auth/login", { email, password }),
 
-  register: async (name: string, email: string, password: string, phone?: string): Promise<AuthData> =>
-    authPost<AuthData>("/auth/register", { name, email, password, phone }),
+  register: async (name: string, email: string, password: string, phone?: string): Promise<void> =>
+    authPost<void>("/auth/register", { name, email, password, phone }),
 
   // Gửi Google ID token (credential) — backend verify với Google rồi set cookie HttpOnly.
-  googleLogin: async (credential: string): Promise<AuthData> =>
-    authPost<AuthData>("/auth/google", { credential }),
+  googleLogin: async (credential: string): Promise<void> =>
+    authPost<void>("/auth/google", { credential }),
 
   // Gửi Facebook access token — backend verify với Graph API rồi set cookie HttpOnly.
-  facebookLogin: async (accessToken: string): Promise<AuthData> =>
-    authPost<AuthData>("/auth/facebook", { accessToken }),
+  facebookLogin: async (accessToken: string): Promise<void> =>
+    authPost<void>("/auth/facebook", { accessToken }),
 
   me: async (): Promise<User> => (await api.get("/owners/me")).data.data,
 

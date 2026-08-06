@@ -130,7 +130,7 @@ export default function CreatePetPage() {
         emergencyContacts,
       });
 
-      if (photoFile) { try { await petService.uploadPhoto(pet.id, photoFile); } catch { /* giữ pet */ } }
+      if (photoFile) await petService.uploadPhoto(pet.id, photoFile);
       await refreshPets();
       router.push(ROUTES.petTags(pet.id));
     } catch (e) {
